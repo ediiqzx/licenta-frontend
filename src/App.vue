@@ -1,0 +1,91 @@
+<script setup>
+import { RouterLink, RouterView } from 'vue-router'
+</script>
+
+<template>
+  <RouterView />
+  <!-- <RouterLink to="/">Home</RouterLink>
+  <RouterLink to="/about">About</RouterLink> -->
+</template>
+
+<style lang="scss">
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap');
+
+:root {
+  --main: #5668F6;
+  --main-glass: #EEF0FE;
+  --main-dark: #3749DB;
+  --main-light: #7383FF;
+
+  --accent: #CC56F6;
+  --accent-glass: #FAEEFE;
+  --accent-dark: #B037DB;
+  --accent-light: #DA73FF;
+
+  --pure-white: #ffffff;
+  --pure-black: #000000;
+
+  --97-gray: #f7f7f7;
+  --75-gray: #bfbfbf;
+  --50-gray: #808080;
+  --25-gray: #404040;
+
+
+  --25-gray-75opc: #404040BF;
+
+  --brand-gradient: linear-gradient(45deg, #5668F6 0%, #CC56F6 100%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  position: relative;
+  font-weight: normal;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--main-glass);
+  color: var(--25-gray);
+
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  line-height: 150%;
+
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, p, a, button, input{
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 150%;
+}
+
+h3{  font-size: 24px; font-weight: 700; }
+h4{  font-size: 20px; font-weight: 700; }
+h5{  font-size: 16px; font-weight: 600; }
+
+.as-separator{
+  width: 100%;
+  height: 1px;
+  background-color: var(--main);
+  opacity: 0.1;
+}
+
+.sectionBox{
+  width: 100%;
+  background: var(--pure-white);
+  padding: 24px;
+  border-radius: 3px;
+  border: 1px solid var(--75-gray);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+</style>
