@@ -36,7 +36,7 @@ export default {
         img{ width: 16px; height: 16px; }
         p{ transition: all 0.3s ease; }
 
-        &.as-button-main, &.as-button-loading{
+        &.as-button-main, &.as-button-loading, &.as-button-secondary{
             padding: 12px 24px;
         }
 
@@ -47,6 +47,16 @@ export default {
                 font-weight: 600;
             }
             &:hover{ background: var(--accent); }
+            &:disabled{ background: var(--75-gray); }
+        }
+
+        &.as-button-secondary{
+            background: var(--25-gray);
+            p{
+                color: var(--pure-white);
+                font-weight: 600;
+            }
+            &:hover{ background: var(--main); }
             &:disabled{ background: var(--75-gray); }
         }
 

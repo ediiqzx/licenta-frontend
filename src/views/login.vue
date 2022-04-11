@@ -98,7 +98,8 @@ export default {
 				// Redirectionare la dashboard
 				this.$router.push({ name:'dashboard' })
 			}).catch((error) => {
-          		console.log("Error:", error.response)
+          		console.log("Error:", error)
+          		console.log("Error Response:", error.response)
 				alert(error.response.data.error.message)
 				this.registerForm.loading = false
         	});
@@ -127,7 +128,8 @@ export default {
 				// Redirectionare la dashboard 
 				this.$router.push({ name:'dashboard' })
 			}).catch((error) => {
-          		console.log("Error:", error.response)
+          		console.log("Error:", error)
+          		console.log("Error Response:", error.response)
 				alert(error.response.data.error.message)
 				this.loginForm.loading = false
         	});

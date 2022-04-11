@@ -30,7 +30,6 @@ import { RouterLink, RouterView } from 'vue-router'
   --50-gray: #808080;
   --25-gray: #404040;
 
-
   --25-gray-75opc: #404040BF;
 
   --brand-gradient: linear-gradient(45deg, #5668F6 0%, #CC56F6 100%);
@@ -86,6 +85,67 @@ h5{  font-size: 16px; font-weight: 600; }
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.table{
+  display: flex;
+  flex-direction: column;
+  margin-left: -24px;
+  margin-right: -24px;
+  margin-bottom: -24px;
+
+  .tableHead{
+    background: var(--main);
+    color: var(--pure-white);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+
+    .tableHeadItem{
+      width: 128px;
+      &.grow{ flex-grow: 1; }
+    }
+
+    > img{ width: 16px; }
+
+    p{
+      font-weight: 600;
+    }
+  }
+
+  .tableRow{
+    display: flex;
+    align-items: center;
+    padding: 12px 24px;
+    gap: 24px;
+
+    > * {
+      width: 128px;
+      &.grow{
+        width: 1px;
+        flex-grow: 1;
+      }
+    }
+
+    &:not(:last-child){
+      border-bottom: 1px solid var(--main-glass);
+    }
+  }
+}
+
+.popper{
+  background: var(--pure-white) !important;
+  padding: 12px 24px !important;
+  border-radius: 3px !important;
+  color: var(--25-gray) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 10px 10px rgb(0 0 0 / 25%) !important;
+  
+  > p {
+    font-size: 12px !important;
+    margin-bottom: 4px;
+  }
 }
 
 </style>

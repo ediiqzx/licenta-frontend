@@ -1,6 +1,6 @@
 <template>
     <div class="asField">
-        <label>{{ label }}<span style="color: var(--accent)">{{ requiredMark }}</span></label>
+        <label v-if="!hideLabel">{{ label }}<span style="color: var(--accent)">{{ requiredMark }}</span></label>
         <input v-if="type == 'email'"           type="email"		:placeholder="placeholder" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
         <input v-else-if="type == 'password'"   type="password"		:placeholder="placeholder" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
         <input v-else-if="type == 'text'"       type="text"			:placeholder="placeholder" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
@@ -39,6 +39,10 @@ export default {
         },
         disabled: {
             type: Boolean
+        },
+        hideLabel: {
+            type: Boolean,
+            default: false,
         },
         background: {
             type: String,
