@@ -60,6 +60,10 @@ export default {
         this.formData.display_name = this.user.display_name
     },
     methods: {
+        logout(){
+            this.$cookies.remove('allspace_user')
+            this.$router.push({ name:'login' })
+        },
         async saveAccountSettings(){
             // Preluare date
             var newDisplayName = false
@@ -88,7 +92,7 @@ export default {
                 // Daca a expirat token-ul
                 if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
                     alert("Your session expired, please login again!")
-                    this.$router.push({ name:'login' })
+                    this.logout()
                 } else alert(error.response.data.error.message)
             })
         }

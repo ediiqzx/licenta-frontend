@@ -125,7 +125,7 @@
                                 <input type="checkbox" checked disabled>
                                 <input type="checkbox" checked disabled>
                                 <input type="checkbox" checked disabled>
-                                <p class="grow">All</p>
+                                <p class="grow">All (2)</p>
                             </div>
                             <div class="tableRow" v-if="!manage_roles.new_custom_role_row">
                                 <p>Manager</p>
@@ -133,7 +133,7 @@
                                 <input type="checkbox" checked disabled>
                                 <input type="checkbox" checked disabled>
                                 <input type="checkbox" checked disabled>
-                                <p class="grow">All</p>
+                                <p class="grow">All (2)</p>
                             </div>
                             <div class="tableRow" v-if="!manage_roles.new_custom_role_row">
                                 <p>Analyst</p>
@@ -143,14 +143,29 @@
                                 <input type="checkbox" disabled>
                                 <p class="grow">None</p>
                             </div>
+                            <template v-for="(data, role) in active_workspace.custom_roles">
+                                <div class="tableRow" v-if="!manage_roles.new_custom_role_row">
+                                    <p>{{ role }}</p>
+                                    <input type="checkbox" :checked="data.view_dashboard" disabled>
+                                    <input type="checkbox" :checked="data.manage_roles" disabled>
+                                    <input type="checkbox" :checked="data.manage_users" disabled>
+                                    <input type="checkbox" :checked="data.manage_tables" disabled>
+                                    <p v-if="data.tables_access == 'all'" class="grow">All (2)</p>
+                                    <!-- <p v-else-if="testAccesses(data.table_access)">None</p> -->
+                                    <p v-else class="grow">
+                                        <template v-for="(level, name) in data.tables_access"><template v-if="level != 4">{{ name }}({{ level }})<span class="a-comma">, </span></template></template>
+                                    </p>
+                                </div>
+                            </template>
                             <div class="tableRow addNewRole" v-if="manage_roles.new_custom_role_row">
                                 <asField type="text" name="role_name" placeholder="Role name" v-model="manage_roles.new_role.name" hideLabel required/>
                                 <input type="checkbox" name="view_dashboard" v-model="manage_roles.new_role.view_dashboard" />
-                                <input type="checkbox" name="manage_roles" v-model="manage_roles.new_role.manage_roles" />
-                                <input type="checkbox" name="manage_users" v-model="manage_roles.new_role.manage_users" />
+                                <input type="checkbox" name="manage_roles" v-model="manage_roles.new_role.manage_roles" @change="manageRolesChanged()"/>
+                                <input type="checkbox" name="manage_users" v-model="manage_roles.new_role.manage_users" :disabled="manage_roles.new_role.manage_roles"/>
                                 <input type="checkbox" name="manage_tables" v-model="manage_roles.new_role.manage_tables" />
-                                <p class="grow">Choose the tables accesses below:</p>
-                                <div class="list-of-tables">
+                                <p v-if="!manage_roles.new_role.manage_tables" class="grow">Choose the tables accesses below:</p>
+                                <p v-else class="grow">All</p>
+                                <div v-if="!manage_roles.new_role.manage_tables" class="list-of-tables">
                                     <div class="listItem" v-if="active_workspace.default_tables.default_tables_clients">
                                         <p>Clients:</p>
                                         <select name="newRole_accessTable_clients" v-model.number="manage_roles.new_role.tables_access.clients">
@@ -226,7 +241,8 @@ export default {
                         default_tables_products: null,
                         default_tables_projects: null,
                         default_tables_employees: null,
-                    }
+                    },
+                    custom_roles: null,
                 },
             },
             active_workspace:{
@@ -240,7 +256,8 @@ export default {
                     default_tables_products: null,
                     default_tables_projects: null,
                     default_tables_employees: null,
-                }
+                },
+                custom_roles: null,
             },
             view: "dashboard",
             viewTable: null,
@@ -283,21 +300,38 @@ export default {
         setupFormReady: function(){
             const isEmpty = Object.values(this.active_workspace.default_tables).every(x => x == false)
             return isEmpty
+        },
+        testAccesses: function(data){
+            return Object.values(data).every((item) => { return item == 4 })
         }
     },
 	async mounted() {
-        var userData = this.$cookies.get('allspace_user')
-        if (userData == null){
-            alert("Please login first!")
+        console.log('\n', '\n', "===== MOUNTING... =====")
+        await this.fetchUser() // Preluare date user
+        await this.fetchPersonalWorkspace() // Preluare date workspace personal
+        await this.changeWorkspace( this.user.personal_workspace.id ) // Setare workspace default in router-view
+    },
+	methods: {
+        fetchUser(){
+            console.log("Method: fetchUser()")
+            var userData = this.$cookies.get('allspace_user')
+            if (userData == null){
+                alert("Please login first!")
+                this.$router.push({ name:'login' })
+            } else {
+                this.user.jwt = userData.jwt
+                this.user.id = userData.id
+                this.user.email = userData.email
+                this.user.display_name = userData.display_name
+                console.log("User: ", this.user)
+            }
+        },
+        logout(){
+            this.$cookies.remove('allspace_user')
             this.$router.push({ name:'login' })
-        } else {
-            this.user.jwt = userData.jwt
-            this.user.id = userData.id
-            this.user.email = userData.email
-            this.user.display_name = userData.display_name
-            console.log("User: ", this.user)
-
-            // Preluare date despre workspace-ul personal
+        },
+        async fetchPersonalWorkspace(){
+            console.log("Method: fetchPersonalWorkspace()")
             await axios.get( this.apiURL + 'workspaces?populate=default_tables&filters[owner][id][$eq]=' + this.user.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
                 console.log("Response: ", response)
 
@@ -305,30 +339,19 @@ export default {
                 this.user.personal_workspace.id = response.data.data[0].id
                 this.user.personal_workspace.active = response.data.data[0].attributes.active
                 this.user.personal_workspace.name = response.data.data[0].attributes.name
-                this.user.personal_workspace.default_tables.default_tables_clients = response.data.data[0].attributes.default_tables.default_tables_clients
-                this.user.personal_workspace.default_tables.default_tables_contracts = response.data.data[0].attributes.default_tables.default_tables_contracts
-                this.user.personal_workspace.default_tables.default_tables_invoices = response.data.data[0].attributes.default_tables.default_tables_invoices
-                this.user.personal_workspace.default_tables.default_tables_products = response.data.data[0].attributes.default_tables.default_tables_products
-                this.user.personal_workspace.default_tables.default_tables_projects = response.data.data[0].attributes.default_tables.default_tables_projects
-                this.user.personal_workspace.default_tables.default_tables_employees = response.data.data[0].attributes.default_tables.default_tables_employees
+                this.user.personal_workspace.custom_roles = response.data.data[0].attributes.custom_roles
+                for (let [key, value] of Object.entries(this.user.personal_workspace.default_tables)) this.user.personal_workspace.default_tables[key] = response.data.data[0].attributes.default_tables[key]
 
                 console.log("Personal Workspace: ", this.user.personal_workspace)
 
-                // Setare workspace default in router-view
-                this.active_workspace.id = this.user.personal_workspace.id
-                this.active_workspace.active = this.user.personal_workspace.active
-                this.active_workspace.name = this.user.personal_workspace.name
-                this.active_workspace.default_tables.default_tables_clients = this.user.personal_workspace.default_tables.default_tables_clients
-                this.active_workspace.default_tables.default_tables_contracts = this.user.personal_workspace.default_tables.default_tables_contracts
-                this.active_workspace.default_tables.default_tables_invoices = this.user.personal_workspace.default_tables.default_tables_invoices
-                this.active_workspace.default_tables.default_tables_products = this.user.personal_workspace.default_tables.default_tables_products
-                this.active_workspace.default_tables.default_tables_projects = this.user.personal_workspace.default_tables.default_tables_projects
-                this.active_workspace.default_tables.default_tables_employees = this.user.personal_workspace.default_tables.default_tables_employees
-
-                console.log("Active Workspace: ", this.active_workspace)
-
-                // Actualizare view
-                if (this.active_workspace.active) this.view = "dashboard"
+                // Actualizare active workspace daca e nevoie
+                if (this.active_workspace.id == this.user.personal_workspace.id){
+                    this.active_workspace.active = this.user.personal_workspace.active
+                    this.active_workspace.name = this.user.personal_workspace.name
+                    this.active_workspace.custom_roles = this.user.personal_workspace.custom_roles
+                    for (let [key, value] of Object.entries(this.active_workspace.default_tables)) this.active_workspace.default_tables[key] = this.user.personal_workspace.default_tables[key]
+                    console.log("Active Workspace: ", this.active_workspace)
+                }
             }).catch((error) => {
                 console.log("Error: ", error)
                 console.log("Error Response: ", error.response)
@@ -336,18 +359,54 @@ export default {
 				// Daca a expirat token-ul
                 if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
                     alert("Your session expired, please login again!")
-                    this.$cookies.remove('allspace_user')
-                    this.$router.push({ name:'login' })
+                    this.logout()
                 } else alert(error.response.data.error.message)
             })
-        }
-    },
-	methods: {
-        logout(){
-            this.$cookies.remove('allspace_user')
-            this.$router.push({ name:'login' })
+        },
+        async changeWorkspace(workspaceID){
+            console.log("Method: changeWorkspace(" + workspaceID + ")")
+            await axios.get( this.apiURL + 'workspaces/' + workspaceID + '?populate=*', { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                console.log("Response Data Data: ", response.data.data)
+                this.active_workspace.id = response.data.data.id
+                this.active_workspace.active = response.data.data.attributes.active
+                this.active_workspace.name = response.data.data.attributes.name
+                this.active_workspace.custom_roles = response.data.data.attributes.custom_roles
+                for (let [key, value] of Object.entries(this.active_workspace.default_tables)) this.active_workspace.default_tables[key] = response.data.data.attributes.default_tables[key]
+                console.log("Active Workspace: ", this.active_workspace)
+            }).catch((error) => {
+                console.log("Error: ", error)
+                console.log("Error Response: ", error.response)
+
+				// Daca a expirat token-ul
+                if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                    alert("Your session expired, please login again!")
+                    this.logout()
+                } else alert(error.response.data.error.message)
+            })
+        },
+        async fetchActiveWorkspace(){
+            console.log("Method: fetchActiveWorkspace()")
+            await axios.get( this.apiURL + 'workspaces/' + this.active_workspace.id + '?populate=*', { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                console.log("Response Data Data: ", response.data.data)
+                this.active_workspace.id = response.data.data.id
+                this.active_workspace.active = response.data.data.attributes.active
+                this.active_workspace.name = response.data.data.attributes.name
+                this.active_workspace.custom_roles = response.data.data.attributes.custom_roles
+                for (let [key, value] of Object.entries(this.active_workspace.default_tables)) this.active_workspace.default_tables[key] = response.data.data.attributes.default_tables[key]
+                console.log("Active Workspace: ", this.active_workspace)
+            }).catch((error) => {
+                console.log("Error: ", error)
+                console.log("Error Response: ", error.response)
+
+				// Daca a expirat token-ul
+                if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                    alert("Your session expired, please login again!")
+                    this.logout()
+                } else alert(error.response.data.error.message)
+            })
         },
         async saveWorkspace(){
+            console.log("Method: saveWorkspace()")
             var updateData = { data: {
                 "name": this.active_workspace.name,
                 "active": true,
@@ -386,11 +445,12 @@ export default {
                 // Daca a expirat token-ul
                 if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
                     alert("Your session expired, please login again!")
-                    this.$router.push({ name:'login' })
+                    this.logout()
                 } else alert(error.response.data.error.message)
             })
         },
         async changeView(view){
+            console.log("Method: changeView(" + view + ")")
             this.view = view
             if (view == 'workspaceSettings'){
                 console.log("Active Workspace: ", this.active_workspace)
@@ -400,17 +460,12 @@ export default {
                 // Actualizare Workspace Settings
                 this.workspace_settings.loading = false
                 this.workspace_settings.data.name = this.active_workspace.name
-                this.workspace_settings.data.default_tables.default_tables_clients = this.active_workspace.default_tables.default_tables_clients
-                this.workspace_settings.data.default_tables.default_tables_clients = this.active_workspace.default_tables.default_tables_clients
-                this.workspace_settings.data.default_tables.default_tables_contracts = this.active_workspace.default_tables.default_tables_contracts
-                this.workspace_settings.data.default_tables.default_tables_invoices = this.active_workspace.default_tables.default_tables_invoices
-                this.workspace_settings.data.default_tables.default_tables_products = this.active_workspace.default_tables.default_tables_products
-                this.workspace_settings.data.default_tables.default_tables_projects = this.active_workspace.default_tables.default_tables_projects
-                this.workspace_settings.data.default_tables.default_tables_employees = this.active_workspace.default_tables.default_tables_employees
+                for (let [key, value] of Object.entries(this.workspace_settings.data.default_tables)) this.workspace_settings.data.default_tables[key] = this.active_workspace.default_tables[key]
                 this.manage_roles.new_custom_role_row = false
             }
         },
         async saveWorkspaceSettings(){
+            console.log("Method: saveWorkspaceSettings()")
             console.log("Before Change - Active Workspace: ", this.active_workspace)
             console.log("Before Change - Personal Workspace: ", this.user.personal_workspace)
             console.log("Before Change - Workspace Settings: ", this.workspace_settings)
@@ -443,12 +498,52 @@ export default {
                 // Daca a expirat token-ul
                 if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
                     alert("Your session expired, please login again!")
-                    this.$router.push({ name:'login' })
+                    this.logout()
                 } else alert(error.response.data.error.message)
             })
         },
         async saveNewCustomRole(){
+            console.log("Method: saveNewCustomRole()")
             console.log("Manage Roles: ", this.manage_roles)
+            var checkTables = Object.values(this.manage_roles.new_role.tables_access).every((item) => { return item == 4 })
+
+            // Validare date
+            if(!this.manage_roles.new_role.name) alert ("You forgot to choose a name for the new custom role!")
+            else if (checkTables && !this.manage_roles.new_role.view_dashboard && !this.manage_roles.new_role.manage_roles && !this.manage_roles.new_role.manage_users && !this.manage_roles.new_role.manage_tables) alert ("Please choose at least one type of right for the new custom role!")
+            else {
+                // Actualizare Workspace Settings
+                this.workspace_settings.loading = true
+
+                // Declarare body request
+                var roleData = this.manage_roles.new_role
+                roleData.workspaceID = this.active_workspace.id
+
+                // Request salvare rol
+                await axios.post(this.apiURL + 'workspaces/createCustomRole/', roleData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                    console.log("Response: ", response)
+
+                    // Actualizare active workspace
+                    this.fetchActiveWorkspace()
+
+                    // Refresh
+                    this.changeView('workspaceSettings')
+                }).catch((error) => {
+                    console.log("Error: ", error)
+                    console.log("Error Response: ", error.response)
+
+                    // Daca a expirat token-ul
+                    if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                        alert("Your session expired, please login again!")
+                        this.logout()
+                    } else alert(error.response.data.error.message)
+
+                    // Actualizare Workspace Settings
+                    this.workspace_settings.loading = false
+                })
+            }
+        },
+        manageRolesChanged(){
+            if (this.manage_roles.new_role.manage_roles) this.manage_roles.new_role.manage_users = true
         }
     }
 }
@@ -652,6 +747,18 @@ export default {
                                 width: 16px;
                             }
                         }
+                    }
+                    .tableRow{
+                        p:first-child{
+                            text-transform: capitalize;
+                        }
+                        p:last-child{
+                            text-transform: capitalize;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                            overflow: hidden;
+                        }
+                        .a-comma:last-child{ display: none; }
                     }
                     .addNewRole{
                         flex-wrap: wrap;
