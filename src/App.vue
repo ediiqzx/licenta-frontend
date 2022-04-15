@@ -131,6 +131,22 @@ h5{  font-size: 16px; font-weight: 600; }
     &:not(:last-child){
       border-bottom: 1px solid var(--main-glass);
     }
+
+    .rowButtons{
+      display: flex;
+      gap: 12px;
+      width: auto;
+
+      img{
+          width: 24px;
+          height: 24px;
+          filter: grayscale(1);
+          transition: all 0.3s ease;
+          cursor: pointer;
+
+          &:hover{ filter: none; }
+      }
+    }
   }
 }
 

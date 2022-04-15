@@ -30,7 +30,7 @@
                     <asButton v-if="active_workspace.default_tables.default_tables_employees && view == 'table' && viewTable == 'employees'" bttnType="third" label="Employees" icon="table-main-16.png" iconPosition="left" class="active"/>
                     <asButton v-else-if="active_workspace.default_tables.default_tables_employees" bttnType="third" label="Employees" icon="table-25gray-16.png" iconPosition="left"/>
 
-                    <asButton bttnType="third" label="Create new table" icon="plus-25gray-16.png" iconPosition="left" @click="newTableWizard()"/>
+                    <!-- <asButton bttnType="third" label="Create new table" icon="plus-25gray-16.png" iconPosition="left" @click="newTableWizard()"/> -->
                 </template>
             </div>
 			<div class="as-separator"></div>
@@ -50,7 +50,7 @@
               <h5 v-else-if="view == 'workspaceSettings'">Workspace Settings</h5>
             </div>
             <div v-if="view == 'dashboard'" class="view-dashboard">
-                <form v-if="!active_workspace.active" class="setupSection" v-on:submit.prevent="saveWorkspace()">
+                <form v-if="!active_workspace.active" class="setupSection" v-on:submit.prevent="saveWorkspaceSetup()">
                     <div class="sectionBox">
                         <h5><span style="color: var(--main)">A.</span> Before starting, we’ll need to configure a few things first:</h5>
                         <div class="as-separator"></div>
@@ -155,6 +155,10 @@
                                     <p v-else class="grow">
                                         <template v-for="(level, name) in data.tables_access"><template v-if="level != 4">{{ name }}({{ level }})<span class="a-comma">, </span></template></template>
                                     </p>
+                                    <div class="rowButtons">
+                                        <!-- <img src="../assets/icBttn-mainGlass-25gray-edit.png" @click="editRole(role)"/> -->
+                                        <img src="../assets/icBttn-mainGlass-25gray-delete.png" @click="deleteRole(role)"/>
+                                    </div>
                                 </div>
                             </template>
                             <div class="tableRow addNewRole" v-if="manage_roles.new_custom_role_row">
@@ -207,6 +211,48 @@
                         </div>
                     </div>
                 </div>
+                <form class="sectionBox sb-manageusers" v-on:submit.prevent="sendUserInvitation()">
+                    <div class="sectionBoxHead">
+                        <h5>Manage Users</h5>
+                        <asButton v-if="!manage_users.invite_user_row" bttnType="main" label="Invite user" icon="plus-white-16.png" @click="manage_users.invite_user_row = true"/>
+                        <template v-else>
+                            <asButton bttnType="secondary" label="Cancel" icon="block-white-16.png" @click="manage_users.invite_user_row = false"/>
+                            <asButton bttnType="main" label="Send invitation" icon="mail-white-16.png"/>
+                        </template>
+                    </div>
+                    <div class="table">
+                        <div class="tableHead" :class="{ 'inviteUser' : manage_users.invite_user_row }">
+                            <p class="tableHeadItem grow" v-if="!manage_users.invite_user_row">Display Name</p>
+                            <p class="tableHeadItem grow">Email Address</p>
+                            <p class="tableHeadItem grow">Role</p>
+                        </div>
+                        <div class="tableRows">
+                            <template v-for="(data, id) in manage_users.users" v-if="!manage_users.invite_user_row">
+                                <div class="tableRow" :class="{ 'owner' : data.role=='owner' }">
+                                    <p class="grow">{{ data.display_name }}</p>
+                                    <p class="grow">{{ data.email }}</p>
+                                    <p v-if="data.role != 'custom'" class="grow">{{ data.role }}</p>
+                                    <p v-else class="grow">{{ data.custom_role }}</p>
+                                    <div class="rowButtons" v-if="data.role != 'owner'">
+                                        <img src="../assets/icBttn-mainGlass-25gray-edit.png" @click="editUser(id)"/>
+                                        <img src="../assets/icBttn-mainGlass-25gray-close.png" @click="kickUser(id)"/>
+                                    </div>
+                                </div>
+                            </template>
+                            <div class="tableRow inviteUser" v-else>
+                                <asField type="email" name="user_email" placeholder="new_user_email_address@gmail.com" v-model="manage_users.new_user.email" hideLabel required class="grow"/>
+                                <select name="user_role" v-model="manage_users.new_user.role" class="grow">
+                                    <option disabled="" value="">Select a role</option>
+                                    <option value="analyst">Manager</option>
+                                    <option value="analyst">Analyst</option>
+                                    <template v-for="(data, name) in active_workspace.custom_roles">
+                                        <option :value="name">{{ name }}</option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -218,7 +264,7 @@ import axios from 'axios'
 import asField from '@/components/asField.vue'
 import asButton from '@/components/asButton.vue'
 import asAccountSettings from '@/components/asAccountSettings.vue'
-import Popper from "vue3-popper";
+import Popper from "vue3-popper"
 
 export default {
     name: 'Dashboard',
@@ -292,6 +338,14 @@ export default {
                         projects: 4,
                         employees: 4,
                     }
+                }
+            },
+            manage_users: {
+                invite_user_row: false,
+                users: {},
+                new_user: {
+                    email: null,
+                    role: "",
                 }
             }
 		}
@@ -405,8 +459,8 @@ export default {
                 } else alert(error.response.data.error.message)
             })
         },
-        async saveWorkspace(){
-            console.log("Method: saveWorkspace()")
+        async saveWorkspaceSetup(){
+            console.log("Method: saveWorkspaceSetup()")
             var updateData = { data: {
                 "name": this.active_workspace.name,
                 "active": true,
@@ -462,6 +516,24 @@ export default {
                 this.workspace_settings.data.name = this.active_workspace.name
                 for (let [key, value] of Object.entries(this.workspace_settings.data.default_tables)) this.workspace_settings.data.default_tables[key] = this.active_workspace.default_tables[key]
                 this.manage_roles.new_custom_role_row = false
+
+                // Preluare utilizatori
+                await axios.get(this.apiURL + 'user-and-workspaces/workspaceUsers/' + this.active_workspace.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                    console.log("Response: ", response)
+
+                    // Actualizare Workspace Users
+                    this.manage_users.users = response.data
+                    console.log("Manage Users: ", this.manage_users)
+                }).catch((error) => {
+                    console.log("Error: ", error)
+                    console.log("Error Response: ", error.response)
+
+                    // Daca a expirat token-ul
+                    if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                        alert("Your session expired, please login again!")
+                        this.logout()
+                    } else alert(error.response.data.error.message)
+                })
             }
         },
         async saveWorkspaceSettings(){
@@ -482,12 +554,14 @@ export default {
                     this.user.personal_workspace.active = response.data.data.attributes.active
                     this.user.personal_workspace.name = response.data.data.attributes.name
                     this.user.personal_workspace.default_tables = response.data.data.attributes.default_tables
+                    this.user.personal_workspace.custom_roles = response.data.data.attributes.custom_roles
                 }
 
                 // Actualizare Active Workspace
                 this.active_workspace.active = response.data.data.attributes.active
                 this.active_workspace.name = response.data.data.attributes.name
                 this.active_workspace.default_tables = response.data.data.attributes.default_tables
+                this.active_workspace.custom_roles = response.data.data.attributes.custom_roles
 
                 // Refresh
                 this.changeView('workspaceSettings')
@@ -500,6 +574,9 @@ export default {
                     alert("Your session expired, please login again!")
                     this.logout()
                 } else alert(error.response.data.error.message)
+
+                // Actualizare Workspace Settings
+                this.workspace_settings.loading = false
             })
         },
         async saveNewCustomRole(){
@@ -515,11 +592,135 @@ export default {
                 this.workspace_settings.loading = true
 
                 // Declarare body request
-                var roleData = this.manage_roles.new_role
-                roleData.workspaceID = this.active_workspace.id
+                var requestData = this.manage_roles.new_role
+                requestData.workspaceID = this.active_workspace.id
 
                 // Request salvare rol
-                await axios.post(this.apiURL + 'workspaces/createCustomRole/', roleData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                await axios.post(this.apiURL + 'workspaces/createCustomRole/', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                    console.log("Response: ", response)
+
+                    // Actualizare active workspace
+                    this.fetchActiveWorkspace()
+
+                    // Curatare formular rol nou
+                    this.manage_roles.new_role = {
+                        name: null,
+                        view_dashboard: false,
+                        manage_roles: false,
+                        manage_users: false,
+                        manage_tables: false,
+                        tables_access: {
+                            clients: 4,
+                            contracts: 4,
+                            invoices: 4,
+                            products: 4,
+                            projects: 4,
+                            employees: 4,
+                        }
+                    }
+
+                    // Refresh
+                    this.changeView('workspaceSettings')
+                }).catch((error) => {
+                    console.log("Error: ", error)
+                    console.log("Error Response: ", error.response)
+
+                    // Daca a expirat token-ul
+                    if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                        alert("Your session expired, please login again!")
+                        this.logout()
+                    } else alert(error.response.data.error.message)
+
+                    // Actualizare Workspace Settings
+                    this.workspace_settings.loading = false
+                })
+            }
+        },
+        async deleteRole(role){
+            console.log("Method: deleteRole(" + role + ")")
+
+            let confirmAction = confirm("Are you sure you want to remove role '" + role + "'?\nAll users with this role will get the role 'Analyst'.")
+            if (confirmAction){
+                // Actualizare Workspace Settings
+                this.workspace_settings.loading = true
+
+                var requestData = {
+                    workspaceID: this.active_workspace.id,
+                    roleName: role
+                }
+                await axios.post(this.apiURL + 'workspaces/deleteCustomRole/', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                    console.log("Response: ", response)
+
+                    // Actualizare active workspace
+                    this.fetchActiveWorkspace()
+
+                    // Refresh
+                    this.changeView('workspaceSettings')
+                }).catch((error) => {
+                    console.log("Error: ", error)
+                    console.log("Error Response: ", error.response)
+
+                    // Daca a expirat token-ul
+                    if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                        alert("Your session expired, please login again!")
+                        this.logout()
+                    } else alert(error.response.data.error.message)
+
+                    // Actualizare Workspace Settings
+                    this.workspace_settings.loading = false
+                })
+            }
+        },
+        async kickUser(id){
+            console.log("Method: kickUser(" + id + ")")
+
+            let confirmAction = confirm("Are you sure you want to kick '" + this.manage_users.users[id].display_name + "' from the workspace?")
+            if (confirmAction){
+                // Actualizare Workspace Settings
+                this.workspace_settings.loading = true
+
+                await axios.delete(this.apiURL + 'user-and-workspaces/' + this.manage_users.users[id].user_and_workspace, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                    console.log("Response: ", response)
+
+                    // Actualizare active workspace
+                    this.fetchActiveWorkspace()
+
+                    // Refresh
+                    this.changeView('workspaceSettings')
+                }).catch((error) => {
+                    console.log("Error: ", error)
+                    console.log("Error Response: ", error.response)
+
+                    // Daca a expirat token-ul
+                    if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                        alert("Your session expired, please login again!")
+                        this.logout()
+                    } else alert(error.response.data.error.message)
+
+                    // Actualizare Workspace Settings
+                    this.workspace_settings.loading = false
+                })
+            }
+        },
+        async sendUserInvitation(){
+            console.log("Method: sendUserInvitation()")
+            console.log("Manage Users: ", this.manage_users)
+
+            // Validare date
+            if (!this.manage_users.new_user.role) alert ("Please choose a role for the invited person!")
+            else {
+                // Actualizare Workspace Settings
+                this.workspace_settings.loading = true
+
+                // Declarare body request
+                var requestData = { data: {
+                    email: this.manage_users.new_user.email,
+                    workspace: this.active_workspace.id,
+                    role: this.manage_users.new_user.role,
+                } }
+                
+
+                await axios.post(this.apiURL + 'pending-invitations/', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
                     console.log("Response: ", response)
 
                     // Actualizare active workspace
@@ -594,12 +795,12 @@ export default {
                     :deep(p) { color: var(--main); }
                 }
 
-                &:last-child{
-                    opacity: 0.5;
-                    &:hover{
-                        opacity: 1;
-                    }
-                }
+                // &:last-child{
+                //     opacity: 0.5;
+                //     &:hover{
+                //         opacity: 1;
+                //     }
+                // }
             }
 
             .setupText{
@@ -799,6 +1000,30 @@ export default {
                                     border-radius: 3px;
                                     padding: 8px;
                                     border-right: 8px solid transparent;
+                                }
+                            }
+                        }
+                    }
+                }
+                &.sb-manageusers{
+                    .tableHead:not(.inviteUser){
+                        padding-right: calc(48px + 60px)
+                    }
+                    .tableRows{
+                        .tableRow{
+                            &.owner{
+                                padding-right: calc(48px + 60px)
+                            }
+                            select{
+                                font-family: 'Poppins', sans-serif;
+                                font-size: 14px;
+                                border-radius: 3px;
+                                padding: 12px 24px;
+                                text-transform: capitalize;
+                            }
+                            &.inviteUser{
+                                > *{
+                                    flex: 1 1 50%;
                                 }
                             }
                         }

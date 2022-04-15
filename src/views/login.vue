@@ -102,7 +102,7 @@ export default {
           		console.log("Error Response:", error.response)
 				alert(error.response.data.error.message)
 				this.registerForm.loading = false
-        	});
+        	})
 		},
 		async login(){
 			console.log("Login Form:", this.loginForm)
@@ -132,7 +132,7 @@ export default {
           		console.log("Error Response:", error.response)
 				alert(error.response.data.error.message)
 				this.loginForm.loading = false
-        	});
+        	})
 		}
 	}
 }
