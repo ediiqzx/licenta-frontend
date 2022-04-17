@@ -151,7 +151,6 @@
                                     <input type="checkbox" :checked="data.manage_users" disabled>
                                     <input type="checkbox" :checked="data.manage_tables" disabled>
                                     <p v-if="data.tables_access == 'all'" class="grow">All (2)</p>
-                                    <!-- <p v-else-if="testAccesses(data.table_access)">None</p> -->
                                     <p v-else class="grow">
                                         <template v-for="(level, name) in data.tables_access"><template v-if="level != 4">{{ name }}({{ level }})<span class="a-comma">, </span></template></template>
                                     </p>
@@ -228,14 +227,18 @@
                         </div>
                         <div class="tableRows">
                             <template v-for="(data, id) in manage_users.users" v-if="!manage_users.invite_user_row">
-                                <div class="tableRow" :class="{ 'owner' : data.role=='owner' }">
-                                    <p class="grow">{{ data.display_name }}</p>
+                                <div class="tableRow" :class="{ 'owner' : data.role=='owner', 'editable' : manage_users.editingUser == id }">
+                                    <p class="grow" v-if="data.custom_role != 'pending'">{{ data.display_name }}</p>
+                                    <p class="grow pending" v-else>Pending Invitation</p>
                                     <p class="grow">{{ data.email }}</p>
                                     <p v-if="data.role != 'custom'" class="grow">{{ data.role }}</p>
                                     <p v-else class="grow">{{ data.custom_role }}</p>
-                                    <div class="rowButtons" v-if="data.role != 'owner'">
+                                    <div class="rowButtons" v-if="data.role != 'owner' && data.custom_role != 'pending'">
                                         <img src="../assets/icBttn-mainGlass-25gray-edit.png" @click="editUser(id)"/>
                                         <img src="../assets/icBttn-mainGlass-25gray-close.png" @click="kickUser(id)"/>
+                                    </div>
+                                    <div class="rowButtons" v-else-if="data.custom_role == 'pending'">
+                                        <img class="twoxbutton" src="../assets/icBttnX2-mainGlass-25gray-close.png" @click="revokeInvitation(id)"/>
                                     </div>
                                 </div>
                             </template>
@@ -243,7 +246,7 @@
                                 <asField type="email" name="user_email" placeholder="new_user_email_address@gmail.com" v-model="manage_users.new_user.email" hideLabel required class="grow"/>
                                 <select name="user_role" v-model="manage_users.new_user.role" class="grow">
                                     <option disabled="" value="">Select a role</option>
-                                    <option value="analyst">Manager</option>
+                                    <option value="manager">Manager</option>
                                     <option value="analyst">Analyst</option>
                                     <template v-for="(data, name) in active_workspace.custom_roles">
                                         <option :value="name">{{ name }}</option>
@@ -346,17 +349,15 @@ export default {
                 new_user: {
                     email: null,
                     role: "",
-                }
+                },
+                editingUser: null,
             }
 		}
 	},
 	computed: {
-        setupFormReady: function(){
+        setupFormReady(){
             const isEmpty = Object.values(this.active_workspace.default_tables).every(x => x == false)
             return isEmpty
-        },
-        testAccesses: function(data){
-            return Object.values(data).every((item) => { return item == 4 })
         }
     },
 	async mounted() {
@@ -364,6 +365,10 @@ export default {
         await this.fetchUser() // Preluare date user
         await this.fetchPersonalWorkspace() // Preluare date workspace personal
         await this.changeWorkspace( this.user.personal_workspace.id ) // Setare workspace default in router-view
+
+        if(this.$route.params.fromInvitation){
+            console.log('Coming from an invitation registration')
+        }
     },
 	methods: {
         fetchUser(){
@@ -516,6 +521,7 @@ export default {
                 this.workspace_settings.data.name = this.active_workspace.name
                 for (let [key, value] of Object.entries(this.workspace_settings.data.default_tables)) this.workspace_settings.data.default_tables[key] = this.active_workspace.default_tables[key]
                 this.manage_roles.new_custom_role_row = false
+                this.manage_users.invite_user_row = false
 
                 // Preluare utilizatori
                 await axios.get(this.apiURL + 'user-and-workspaces/workspaceUsers/' + this.active_workspace.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
@@ -702,6 +708,41 @@ export default {
                 })
             }
         },
+        async revokeInvitation(id){
+            console.log("Method: revokeInvitation(" + id + ")")
+
+            let confirmAction = confirm("Are you sure you want to revoke the invitation for '" + this.manage_users.users[id].display_name + "'?")
+            if (confirmAction){
+                // Actualizare Workspace Settings
+                this.workspace_settings.loading = true
+
+                // Stergere "pending-" din "id"
+                id = parseInt(id.slice(8))
+                console.log(id)
+
+                await axios.delete(this.apiURL + 'pending-invitations/' + id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                    console.log("Response: ", response)
+
+                    // Actualizare active workspace
+                    this.fetchActiveWorkspace()
+
+                    // Refresh
+                    this.changeView('workspaceSettings')
+                }).catch((error) => {
+                    console.log("Error: ", error)
+                    console.log("Error Response: ", error.response)
+
+                    // Daca a expirat token-ul
+                    if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                        alert("Your session expired, please login again!")
+                        this.logout()
+                    } else alert(error.response.data.error.message)
+
+                    // Actualizare Workspace Settings
+                    this.workspace_settings.loading = false
+                })
+            }
+        },
         async sendUserInvitation(){
             console.log("Method: sendUserInvitation()")
             console.log("Manage Users: ", this.manage_users)
@@ -717,6 +758,7 @@ export default {
                     email: this.manage_users.new_user.email,
                     workspace: this.active_workspace.id,
                     role: this.manage_users.new_user.role,
+                    invited_by: this.user.id
                 } }
                 
 
@@ -725,6 +767,12 @@ export default {
 
                     // Actualizare active workspace
                     this.fetchActiveWorkspace()
+
+                    // Curatare formular invitare user
+                    this.manage_users.new_user = {
+                        email: null,
+                        role: "",
+                    }
 
                     // Refresh
                     this.changeView('workspaceSettings')
@@ -1011,6 +1059,18 @@ export default {
                     }
                     .tableRows{
                         .tableRow{
+                            p:first-child.pending{
+                                font-weight: 600;
+                                background: var(--brand-gradient);
+                                -webkit-background-clip: text;
+                                -webkit-text-fill-color: transparent;
+                                background-clip: text;
+                                text-fill-color: transparent;
+                                text-transform: uppercase;
+                            }
+                            p:nth-child(3){
+                                text-transform: capitalize;
+                            }
                             &.owner{
                                 padding-right: calc(48px + 60px)
                             }

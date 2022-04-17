@@ -1,10 +1,10 @@
 <template>
     <div class="asField">
         <label v-if="!hideLabel">{{ label }}<span style="color: var(--accent)">{{ requiredMark }}</span></label>
-        <input v-if="type == 'email'"           type="email"		:placeholder="placeholder" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
-        <input v-else-if="type == 'password'"   type="password"		:placeholder="placeholder" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
-        <input v-else-if="type == 'text'"       type="text"			:placeholder="placeholder" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
-        <input v-else-if="type == 'file'"       type="file"			:placeholder="placeholder" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
+        <input v-if="type == 'email'"           type="email"		:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
+        <input v-else-if="type == 'password'"   type="password"		:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
+        <input v-else-if="type == 'text'"       type="text"			:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
+        <input v-else-if="type == 'file'"       type="file"			:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
     </div>
 </template>
 
@@ -47,6 +47,10 @@ export default {
         background: {
             type: String,
             default: '#ffffff'
+        },
+        minlength: {
+            type: Number,
+            default: 0
         },
     },
     emits: ['update:modelValue'],

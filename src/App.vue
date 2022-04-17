@@ -144,6 +144,10 @@ h5{  font-size: 16px; font-weight: 600; }
           transition: all 0.3s ease;
           cursor: pointer;
 
+          &.twoxbutton{
+            width: 60px;
+          }
+
           &:hover{ filter: none; }
       }
     }

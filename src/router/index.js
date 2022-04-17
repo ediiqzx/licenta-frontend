@@ -17,6 +17,12 @@ const router = createRouter({
       props: true
     },
     {
+      path: '/register-from-invitation',
+      name: 'register-from-invitation',
+      component: () => import('../views/register-from-invitation.vue'),
+      props: true
+    },
+    {
       path: "/:catchAll(.*)",
       name: '404',
       component: () => import(/* webpackChunkName: "404" */ '../views/login.vue'),

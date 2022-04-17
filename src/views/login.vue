@@ -21,7 +21,7 @@
 			<div class="as-separator"></div>
 			<form name="registerForm" v-on:submit.prevent="register()" method="POST">
 				<asField name="email" 			type="email" 	label="Email Address"					required 									icon="email-blue-16.png"	v-model="registerForm.email"		:disabled="registerForm.loading"/>
-				<asField name="password"		type="password"	label="Password (min. 6 characters)"	required placeholder="***************"		icon="password-blue-16.png"	v-model="registerForm.password"		:disabled="registerForm.loading"/>
+				<asField name="password"		type="password"	label="Password (min. 6 characters)"	required placeholder="***************"		icon="password-blue-16.png"	v-model="registerForm.password"		:disabled="registerForm.loading" :minlength="6"/>
 				<div class="as-separator"></div>
 				<asField name="display_name"	type="text"	label="Display name"	placeholder="Alexandru Popescu"	icon="user-blue-16.png"			v-model="registerForm.display_name"		:disabled="registerForm.loading"/>
 				<div class="as-separator"></div>
