@@ -2,8 +2,9 @@
     <div class="as-container">
         <div class="sidemenu">
             <img src="../assets/logo.png" class="as-logo"/>
-            <select id="workspace" name="workspace">
+            <select id="workspace" name="workspace" v-model="active_workspace.id" @change="changeWorkspace(active_workspace.id)">
                 <option :value="user.personal_workspace.id">{{ user.personal_workspace.name }}</option>
+                <option v-for="(data, id) in user.workspaces" :value="id">{{ data.name }}</option>
             </select>
 			<div v-if="active_workspace.active" class="as-separator"></div>
             <div v-if="active_workspace.active" class="workspaceSettings">
@@ -11,7 +12,7 @@
                 <asButton v-else bttnType="third" label="Dashboard" icon="dashboard-25gray-16.png" iconPosition="left" @click="changeView('dashboard')"/>
                 <asButton v-if="view == 'workspaceSettings'" bttnType="third" label="Workspace Settings" icon="wrench-main-16.png" iconPosition="left" class="active"/>
                 <asButton v-else bttnType="third" label="Workspace Settings" icon="wrench-25gray-16.png" iconPosition="left" @click="changeView('workspaceSettings')"/>
-                <asButton v-if="active_workspace.id != user.personal_workspace.id" bttnType="third" label="Leave Workspace" icon="logout-red-16.png" iconPosition="left"/>
+                <asButton v-if="active_workspace.id != user.personal_workspace.id" bttnType="third" label="Leave Workspace" icon="logout-red-16.png" iconPosition="left" @click="leaveWorkspace(user.workspaces[active_workspace.id].user_and_workspace_ID)"/>
             </div>
 			<div class="as-separator"></div>
             <div class="menuItems">
@@ -227,25 +228,42 @@
                         </div>
                         <div class="tableRows">
                             <template v-for="(data, id) in manage_users.users" v-if="!manage_users.invite_user_row">
-                                <div class="tableRow" :class="{ 'owner' : data.role=='owner', 'editable' : manage_users.editingUser == id }">
+                                <div class="tableRow" :class="{ 'noButtons' : data.role=='owner' || id == user.id, 'editable' : manage_users.editing_user == id }">
                                     <p class="grow" v-if="data.custom_role != 'pending'">{{ data.display_name }}</p>
                                     <p class="grow pending" v-else>Pending Invitation</p>
                                     <p class="grow">{{ data.email }}</p>
-                                    <p v-if="data.role != 'custom'" class="grow">{{ data.role }}</p>
-                                    <p v-else class="grow">{{ data.custom_role }}</p>
-                                    <div class="rowButtons" v-if="data.role != 'owner' && data.custom_role != 'pending'">
-                                        <img src="../assets/icBttn-mainGlass-25gray-edit.png" @click="editUser(id)"/>
-                                        <img src="../assets/icBttn-mainGlass-25gray-close.png" @click="kickUser(id)"/>
-                                    </div>
-                                    <div class="rowButtons" v-else-if="data.custom_role == 'pending'">
-                                        <img class="twoxbutton" src="../assets/icBttnX2-mainGlass-25gray-close.png" @click="revokeInvitation(id)"/>
-                                    </div>
+                                    <template v-if="manage_users.editing_user.id != id">
+                                        <p v-if="data.role != 'custom'" class="grow">{{ data.role }}</p>
+                                        <p v-else class="grow">{{ data.custom_role }}</p>
+                                        <div class="rowButtons" v-if="id != user.id && data.role != 'owner' && data.custom_role != 'pending'">
+                                            <img src="../assets/icBttn-mainGlass-25gray-edit.png" @click="editUser(id)"/>
+                                            <img src="../assets/icBttn-mainGlass-25gray-close.png" @click="kickUser(id)"/>
+                                        </div>
+                                        <div class="rowButtons" v-else-if="data.custom_role == 'pending'">
+                                            <img class="twoxbutton" src="../assets/icBttnX2-mainGlass-25gray-close.png" @click="revokeInvitation(id)"/>
+                                        </div>
+                                    </template>
+                                    <template v-else>
+                                        <select name="new_role" v-model="manage_users.editing_user.new_role" class="grow">
+                                            <option disabled value="">Select new role</option>
+                                            <option value="manager">Manager</option>
+                                            <option value="analyst">Analyst</option>
+                                            <template v-for="(data, name) in active_workspace.custom_roles">
+                                                <option :value="name">{{ name }}</option>
+                                            </template>
+                                        </select>
+                                        <div class="rowButtons">
+                                            <img src="../assets/icBttn-mainGlass-25gray-check.png" @click="updateRole()"/>
+                                            <img src="../assets/icBttn-mainGlass-25gray-close.png" @click="editUser(null)"/>
+                                        </div>
+                                    </template>
+                                    
                                 </div>
                             </template>
                             <div class="tableRow inviteUser" v-else>
                                 <asField type="email" name="user_email" placeholder="new_user_email_address@gmail.com" v-model="manage_users.new_user.email" hideLabel required class="grow"/>
                                 <select name="user_role" v-model="manage_users.new_user.role" class="grow">
-                                    <option disabled="" value="">Select a role</option>
+                                    <option disabled value="">Select a role</option>
                                     <option value="manager">Manager</option>
                                     <option value="analyst">Analyst</option>
                                     <template v-for="(data, name) in active_workspace.custom_roles">
@@ -293,6 +311,7 @@ export default {
                     },
                     custom_roles: null,
                 },
+                workspaces: {}
             },
             active_workspace:{
                 id: null,
@@ -350,7 +369,10 @@ export default {
                     email: null,
                     role: "",
                 },
-                editingUser: null,
+                editing_user: {
+                    id: null,
+                    new_role: "",
+                }
             }
 		}
 	},
@@ -364,56 +386,45 @@ export default {
         console.log('\n', '\n', "===== MOUNTING... =====")
         await this.fetchUser() // Preluare date user
         await this.fetchPersonalWorkspace() // Preluare date workspace personal
-        await this.changeWorkspace( this.user.personal_workspace.id ) // Setare workspace default in router-view
-
+        
+        // Setare workspace default in router-view
         if(this.$route.params.fromInvitation){
             console.log('Coming from an invitation registration')
-        }
+            await this.changeWorkspace ( this.$route.params.fromInvitation )
+        } else await this.changeWorkspace( this.user.personal_workspace.id )
     },
 	methods: {
-        fetchUser(){
+        async fetchUser(){
             console.log("Method: fetchUser()")
             var userData = this.$cookies.get('allspace_user')
             if (userData == null){
                 alert("Please login first!")
                 this.$router.push({ name:'login' })
             } else {
-                this.user.jwt = userData.jwt
-                this.user.id = userData.id
-                this.user.email = userData.email
-                this.user.display_name = userData.display_name
-                console.log("User: ", this.user)
+                let toUpdate = ['jwt', 'id', 'email', 'display_name']
+                toUpdate.forEach(item => this.user[item] = userData[item])
+                console.log("user: ", this.user)
             }
-        },
-        logout(){
-            this.$cookies.remove('allspace_user')
-            this.$router.push({ name:'login' })
-        },
-        async fetchPersonalWorkspace(){
-            console.log("Method: fetchPersonalWorkspace()")
-            await axios.get( this.apiURL + 'workspaces?populate=default_tables&filters[owner][id][$eq]=' + this.user.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                console.log("Response: ", response)
 
-                // Actualizare date personal workspace
-                this.user.personal_workspace.id = response.data.data[0].id
-                this.user.personal_workspace.active = response.data.data[0].attributes.active
-                this.user.personal_workspace.name = response.data.data[0].attributes.name
-                this.user.personal_workspace.custom_roles = response.data.data[0].attributes.custom_roles
-                for (let [key, value] of Object.entries(this.user.personal_workspace.default_tables)) this.user.personal_workspace.default_tables[key] = response.data.data[0].attributes.default_tables[key]
+            // Preluare workspace-uri
+            await axios.get(this.apiURL + 'user-and-workspaces/?populate=*&filters[role][$ne]=owner&filters[user][id][$eq]=' + this.user.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                console.log("response: ", response)
 
-                console.log("Personal Workspace: ", this.user.personal_workspace)
-
-                // Actualizare active workspace daca e nevoie
-                if (this.active_workspace.id == this.user.personal_workspace.id){
-                    this.active_workspace.active = this.user.personal_workspace.active
-                    this.active_workspace.name = this.user.personal_workspace.name
-                    this.active_workspace.custom_roles = this.user.personal_workspace.custom_roles
-                    for (let [key, value] of Object.entries(this.active_workspace.default_tables)) this.active_workspace.default_tables[key] = this.user.personal_workspace.default_tables[key]
-                    console.log("Active Workspace: ", this.active_workspace)
+                if (!response.data.data.length) console.log("Have only personal workspace")
+                else{
+                    response.data.data.forEach((item, index) => {
+                        this.user.workspaces[item.attributes.workspace.data.id] = {
+                            name: item.attributes.workspace.data.attributes.name,
+                            role: item.attributes.role,
+                            custom_role: item.attributes.custom_role,
+                            user_and_workspace_ID: item.id
+                        }
+                    })
+                    console.log("user.workspaces: ", this.user.workspaces)
                 }
             }).catch((error) => {
-                console.log("Error: ", error)
-                console.log("Error Response: ", error.response)
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
 
 				// Daca a expirat token-ul
                 if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -422,19 +433,62 @@ export default {
                 } else alert(error.response.data.error.message)
             })
         },
-        async changeWorkspace(workspaceID){
-            console.log("Method: changeWorkspace(" + workspaceID + ")")
-            await axios.get( this.apiURL + 'workspaces/' + workspaceID + '?populate=*', { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                console.log("Response Data Data: ", response.data.data)
-                this.active_workspace.id = response.data.data.id
-                this.active_workspace.active = response.data.data.attributes.active
-                this.active_workspace.name = response.data.data.attributes.name
-                this.active_workspace.custom_roles = response.data.data.attributes.custom_roles
-                for (let [key, value] of Object.entries(this.active_workspace.default_tables)) this.active_workspace.default_tables[key] = response.data.data.attributes.default_tables[key]
-                console.log("Active Workspace: ", this.active_workspace)
+        logout(){
+            console.log("Method: logout()")
+            this.$cookies.remove('allspace_user')
+            this.$router.push({ name:'login' })
+        },
+        async fetchPersonalWorkspace(){
+            console.log("Method: fetchPersonalWorkspace()")
+
+            await axios.get( this.apiURL + 'workspaces?populate=default_tables&filters[owner][id][$eq]=' + this.user.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                console.log("response: ", response)
+
+                // Actualizare personal workspace
+                this.user.personal_workspace.id = response.data.data[0].id
+                let toUpdate = ['active', 'name', 'custom_roles']
+                toUpdate.forEach(item => this.user.personal_workspace[item] = response.data.data[0].attributes[item])
+                for (let [key, value] of Object.entries(this.user.personal_workspace.default_tables)) this.user.personal_workspace.default_tables[key] = response.data.data[0].attributes.default_tables[key]
+                
+                console.log("user.personal_workspace: ", this.user.personal_workspace)
+
+                // Actualizare active workspace daca e nevoie
+                if (this.active_workspace.id == this.user.personal_workspace.id){
+                    let toUpdate = ['active', 'name', 'custom_roles']
+                    toUpdate.forEach(item => this.active_workspace[item] = this.user.personal_workspace[item])
+                    for (let [key, value] of Object.entries(this.active_workspace.default_tables)) this.active_workspace.default_tables[key] = this.user.personal_workspace.default_tables[key]
+                    console.log("active_workspace: ", this.active_workspace)
+                }
             }).catch((error) => {
-                console.log("Error: ", error)
-                console.log("Error Response: ", error.response)
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
+
+				// Daca a expirat token-ul
+                if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                    alert("Your session expired, please login again!")
+                    this.logout()
+                } else alert(error.response.data.error.message)
+            })
+        },
+        async changeWorkspace(workspaceID, redirect_to_dashboard = true){
+            console.log("Method: changeWorkspace(" + workspaceID + ")")
+
+            await axios.get( this.apiURL + 'workspaces/' + workspaceID + '?populate=*', { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                console.log("response.data.data: ", response.data.data)
+
+                // Actualizare active workspace
+                this.active_workspace.id = response.data.data.id
+                let toUpdate = ['active', 'name', 'custom_roles']
+                toUpdate.forEach(item => this.active_workspace[item] = response.data.data.attributes[item])
+                for (let [key, value] of Object.entries(this.active_workspace.default_tables)) this.active_workspace.default_tables[key] = response.data.data.attributes.default_tables[key]
+                
+                console.log("active_workspace: ", this.active_workspace)
+
+                // Actualizare view
+                if (redirect_to_dashboard) this.changeView('dashboard')
+            }).catch((error) => {
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
 
 				// Daca a expirat token-ul
                 if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -445,28 +499,13 @@ export default {
         },
         async fetchActiveWorkspace(){
             console.log("Method: fetchActiveWorkspace()")
-            await axios.get( this.apiURL + 'workspaces/' + this.active_workspace.id + '?populate=*', { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                console.log("Response Data Data: ", response.data.data)
-                this.active_workspace.id = response.data.data.id
-                this.active_workspace.active = response.data.data.attributes.active
-                this.active_workspace.name = response.data.data.attributes.name
-                this.active_workspace.custom_roles = response.data.data.attributes.custom_roles
-                for (let [key, value] of Object.entries(this.active_workspace.default_tables)) this.active_workspace.default_tables[key] = response.data.data.attributes.default_tables[key]
-                console.log("Active Workspace: ", this.active_workspace)
-            }).catch((error) => {
-                console.log("Error: ", error)
-                console.log("Error Response: ", error.response)
-
-				// Daca a expirat token-ul
-                if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
-                    alert("Your session expired, please login again!")
-                    this.logout()
-                } else alert(error.response.data.error.message)
-            })
+            this.changeWorkspace( this.active_workspace.id, false ) // Refresh workspace dar fara change view la dashboard
         },
         async saveWorkspaceSetup(){
             console.log("Method: saveWorkspaceSetup()")
-            var updateData = { data: {
+
+            // Declarare body request
+            var requestData = { data: {
                 "name": this.active_workspace.name,
                 "active": true,
                 "default_tables": {
@@ -478,28 +517,26 @@ export default {
                     "default_tables_employees": this.active_workspace.default_tables.default_tables_employees,
                 }
             } }
-            console.log("Update Data: ", updateData)
+            console.log("requestData: ", requestData)
 
-            await axios.put(this.apiURL + 'workspaces/' + this.active_workspace.id + '?populate=default_tables', updateData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                console.log("Response: ", response)
+            await axios.put(this.apiURL + 'workspaces/' + this.active_workspace.id + '?populate=default_tables', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                console.log("response: ", response)
 
-                // Actualizare View
-                this.view = "dashboard"
+                // Actualizare view
+                this.changeView('dashboard')
 
-                // Actualizare Personal Workspace
+                // Actualizare personal workspace daca e nevoie
                 if (this.active_workspace.id == this.user.personal_workspace.id){
-                    this.user.personal_workspace.active = response.data.data.attributes.active
-                    this.user.personal_workspace.name = response.data.data.attributes.name
-                    this.user.personal_workspace.default_tables = response.data.data.attributes.default_tables
+                    let toUpdate = ['active', 'name', 'default_tables']
+                    toUpdate.forEach(item => this.user.personal_workspace[item] = response.data.data.attributes[item])
                 }
 
-                // Actualizare Active Workspace
-                this.active_workspace.active = response.data.data.attributes.active
-                this.active_workspace.name = response.data.data.attributes.name
-                this.active_workspace.default_tables = response.data.data.attributes.default_tables
+                // Actualizare active workspace
+                let toUpdate = ['active', 'name', 'default_tables']
+                toUpdate.forEach(item => this.active_workspace[item] = response.data.data.attributes[item])
             }).catch((error) => {
-                console.log("Error: ", error)
-                console.log("Error Response: ", error.response)
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
 
                 // Daca a expirat token-ul
                 if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -510,29 +547,43 @@ export default {
         },
         async changeView(view){
             console.log("Method: changeView(" + view + ")")
-            this.view = view
-            if (view == 'workspaceSettings'){
-                console.log("Active Workspace: ", this.active_workspace)
-                console.log("Personal Workspace: ", this.user.personal_workspace)
-                console.log("Workspace Settings: ", this.workspace_settings)
 
-                // Actualizare Workspace Settings
+            // Actualizare view
+            this.view = view
+
+            // Cases
+            if (view == 'workspaceSettings'){
+                console.log("active_workspace: ", this.active_workspace)
+                console.log("user.personal_workspace: ", this.user.personal_workspace)
+                console.log("workspace_settings: ", this.workspace_settings)
+
+                // Resetare workspace_settings, manage_roles si manage_users
                 this.workspace_settings.loading = false
                 this.workspace_settings.data.name = this.active_workspace.name
                 for (let [key, value] of Object.entries(this.workspace_settings.data.default_tables)) this.workspace_settings.data.default_tables[key] = this.active_workspace.default_tables[key]
                 this.manage_roles.new_custom_role_row = false
+                this.manage_roles.new_role = {
+                    name: null,
+                    view_dashboard: false,
+                    manage_roles: false,
+                    manage_users: false,
+                    manage_tables: false,
+                    tables_access: { clients: 4, contracts: 4, invoices: 4, products: 4, projects: 4, employees: 4 }
+                }
                 this.manage_users.invite_user_row = false
+                this.manage_users.editing_user = { id: null, new_role: "" }
+                this.manage_users.new_user = { email: null, role: "" }
 
                 // Preluare utilizatori
                 await axios.get(this.apiURL + 'user-and-workspaces/workspaceUsers/' + this.active_workspace.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                    console.log("Response: ", response)
+                    console.log("response: ", response)
 
-                    // Actualizare Workspace Users
+                    // Actualizare workspace users
                     this.manage_users.users = response.data
-                    console.log("Manage Users: ", this.manage_users)
+                    console.log("manage_users: ", this.manage_users)
                 }).catch((error) => {
-                    console.log("Error: ", error)
-                    console.log("Error Response: ", error.response)
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
 
                     // Daca a expirat token-ul
                     if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -540,40 +591,42 @@ export default {
                         this.logout()
                     } else alert(error.response.data.error.message)
                 })
+            } else if (view == 'dashboard'){
+
             }
         },
         async saveWorkspaceSettings(){
             console.log("Method: saveWorkspaceSettings()")
-            console.log("Before Change - Active Workspace: ", this.active_workspace)
-            console.log("Before Change - Personal Workspace: ", this.user.personal_workspace)
-            console.log("Before Change - Workspace Settings: ", this.workspace_settings)
+            console.log("Before Change - active_workspace: ", this.active_workspace)
+            console.log("Before Change - workspace_settings: ", this.workspace_settings)
 
-            // Actualizare Workspace Settings
+            // Activare loading state
             this.workspace_settings.loading = true
 
             // Request actualizare nume si/sau default tables
             await axios.put(this.apiURL + 'workspaces/' + this.active_workspace.id + '?populate=default_tables', { data: this.workspace_settings.data }, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                console.log("Response: ", response)
+                console.log("response: ", response)
 
-                // Actualizare Personal Workspace
+                // Actualizare personal workspace daca e nevoie
                 if (this.active_workspace.id == this.user.personal_workspace.id){
-                    this.user.personal_workspace.active = response.data.data.attributes.active
-                    this.user.personal_workspace.name = response.data.data.attributes.name
-                    this.user.personal_workspace.default_tables = response.data.data.attributes.default_tables
-                    this.user.personal_workspace.custom_roles = response.data.data.attributes.custom_roles
+                    let toUpdate = ['active', 'name', 'default_tables', 'custom_roles']
+                    toUpdate.forEach(item => this.user.personal_workspace[item] = response.data.data.attributes[item])
                 }
+                // Actualizare active workspace
+                let toUpdate = ['active', 'name', 'default_tables', 'custom_roles']
+                toUpdate.forEach(item => this.active_workspace[item] = response.data.data.attributes[item])
 
-                // Actualizare Active Workspace
-                this.active_workspace.active = response.data.data.attributes.active
-                this.active_workspace.name = response.data.data.attributes.name
-                this.active_workspace.default_tables = response.data.data.attributes.default_tables
-                this.active_workspace.custom_roles = response.data.data.attributes.custom_roles
+                // Actualizare user workspaces
+                if (this.active_workspace.id != this.user.personal_workspace.id){
+                    console.log(this.user.workspaces[this.active_workspace.id].name)
+                    this.user.workspaces[this.active_workspace.id].name = response.data.data.attributes.name
+                }
 
                 // Refresh
                 this.changeView('workspaceSettings')
             }).catch((error) => {
-                console.log("Error: ", error)
-                console.log("Error Response: ", error.response)
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
 
                 // Daca a expirat token-ul
                 if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -581,55 +634,36 @@ export default {
                     this.logout()
                 } else alert(error.response.data.error.message)
 
-                // Actualizare Workspace Settings
+                // Dezactivare loading state
                 this.workspace_settings.loading = false
             })
         },
         async saveNewCustomRole(){
             console.log("Method: saveNewCustomRole()")
-            console.log("Manage Roles: ", this.manage_roles)
-            var checkTables = Object.values(this.manage_roles.new_role.tables_access).every((item) => { return item == 4 })
+            console.log("manage_roles: ", this.manage_roles)
 
             // Validare date
+            var checkTables = Object.values(this.manage_roles.new_role.tables_access).every((item) => { return item == 4 })
             if(!this.manage_roles.new_role.name) alert ("You forgot to choose a name for the new custom role!")
-            else if (checkTables && !this.manage_roles.new_role.view_dashboard && !this.manage_roles.new_role.manage_roles && !this.manage_roles.new_role.manage_users && !this.manage_roles.new_role.manage_tables) alert ("Please choose at least one type of right for the new custom role!")
+            else if (checkTables && !this.manage_roles.new_role.view_dashboard && !this.manage_roles.new_role.manage_roles && !this.manage_roles.new_role.manage_users && !this.manage_roles.new_role.manage_tables)
+                alert ("Please choose at least one type of right for the new custom role!")
             else {
-                // Actualizare Workspace Settings
+                // Activare loading state
                 this.workspace_settings.loading = true
 
                 // Declarare body request
                 var requestData = this.manage_roles.new_role
                 requestData.workspaceID = this.active_workspace.id
 
-                // Request salvare rol
                 await axios.post(this.apiURL + 'workspaces/createCustomRole/', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                    console.log("Response: ", response)
+                    console.log("response: ", response)
 
-                    // Actualizare active workspace
+                    // Actualizare active workspace si refresh
                     this.fetchActiveWorkspace()
-
-                    // Curatare formular rol nou
-                    this.manage_roles.new_role = {
-                        name: null,
-                        view_dashboard: false,
-                        manage_roles: false,
-                        manage_users: false,
-                        manage_tables: false,
-                        tables_access: {
-                            clients: 4,
-                            contracts: 4,
-                            invoices: 4,
-                            products: 4,
-                            projects: 4,
-                            employees: 4,
-                        }
-                    }
-
-                    // Refresh
                     this.changeView('workspaceSettings')
                 }).catch((error) => {
-                    console.log("Error: ", error)
-                    console.log("Error Response: ", error.response)
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
 
                     // Daca a expirat token-ul
                     if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -637,7 +671,7 @@ export default {
                         this.logout()
                     } else alert(error.response.data.error.message)
 
-                    // Actualizare Workspace Settings
+                    // Dezactivare loading state
                     this.workspace_settings.loading = false
                 })
             }
@@ -645,26 +679,28 @@ export default {
         async deleteRole(role){
             console.log("Method: deleteRole(" + role + ")")
 
+            // Alerta browser
             let confirmAction = confirm("Are you sure you want to remove role '" + role + "'?\nAll users with this role will get the role 'Analyst'.")
+
             if (confirmAction){
-                // Actualizare Workspace Settings
+                // Activare loading state
                 this.workspace_settings.loading = true
 
+                // Declarare body request
                 var requestData = {
                     workspaceID: this.active_workspace.id,
                     roleName: role
                 }
+
                 await axios.post(this.apiURL + 'workspaces/deleteCustomRole/', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                    console.log("Response: ", response)
+                    console.log("response: ", response)
 
-                    // Actualizare active workspace
+                    // Actualizare active workspace si refresh
                     this.fetchActiveWorkspace()
-
-                    // Refresh
                     this.changeView('workspaceSettings')
                 }).catch((error) => {
-                    console.log("Error: ", error)
-                    console.log("Error Response: ", error.response)
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
 
                     // Daca a expirat token-ul
                     if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -672,7 +708,7 @@ export default {
                         this.logout()
                     } else alert(error.response.data.error.message)
 
-                    // Actualizare Workspace Settings
+                    // Dezactivare loading state
                     this.workspace_settings.loading = false
                 })
             }
@@ -680,22 +716,22 @@ export default {
         async kickUser(id){
             console.log("Method: kickUser(" + id + ")")
 
+            // Alerta browser
             let confirmAction = confirm("Are you sure you want to kick '" + this.manage_users.users[id].display_name + "' from the workspace?")
+
             if (confirmAction){
-                // Actualizare Workspace Settings
+                // Activare loading state
                 this.workspace_settings.loading = true
 
                 await axios.delete(this.apiURL + 'user-and-workspaces/' + this.manage_users.users[id].user_and_workspace, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                    console.log("Response: ", response)
+                    console.log("response: ", response)
 
-                    // Actualizare active workspace
+                    // Actualizare active workspace si refresh
                     this.fetchActiveWorkspace()
-
-                    // Refresh
                     this.changeView('workspaceSettings')
                 }).catch((error) => {
-                    console.log("Error: ", error)
-                    console.log("Error Response: ", error.response)
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
 
                     // Daca a expirat token-ul
                     if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -703,7 +739,7 @@ export default {
                         this.logout()
                     } else alert(error.response.data.error.message)
 
-                    // Actualizare Workspace Settings
+                    // Dezactivare loading state
                     this.workspace_settings.loading = false
                 })
             }
@@ -711,26 +747,26 @@ export default {
         async revokeInvitation(id){
             console.log("Method: revokeInvitation(" + id + ")")
 
+            // Alerta browser
             let confirmAction = confirm("Are you sure you want to revoke the invitation for '" + this.manage_users.users[id].display_name + "'?")
+
             if (confirmAction){
-                // Actualizare Workspace Settings
+                // Activare loading state
                 this.workspace_settings.loading = true
 
                 // Stergere "pending-" din "id"
                 id = parseInt(id.slice(8))
-                console.log(id)
+                console.log("id: ", id)
 
                 await axios.delete(this.apiURL + 'pending-invitations/' + id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                    console.log("Response: ", response)
+                    console.log("response: ", response)
 
-                    // Actualizare active workspace
+                    // Actualizare active workspace si refresh
                     this.fetchActiveWorkspace()
-
-                    // Refresh
                     this.changeView('workspaceSettings')
                 }).catch((error) => {
-                    console.log("Error: ", error)
-                    console.log("Error Response: ", error.response)
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
 
                     // Daca a expirat token-ul
                     if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -738,19 +774,19 @@ export default {
                         this.logout()
                     } else alert(error.response.data.error.message)
 
-                    // Actualizare Workspace Settings
+                    // Dezactivare loading state
                     this.workspace_settings.loading = false
                 })
             }
         },
         async sendUserInvitation(){
             console.log("Method: sendUserInvitation()")
-            console.log("Manage Users: ", this.manage_users)
+            console.log("manage_users: ", this.manage_users)
 
             // Validare date
             if (!this.manage_users.new_user.role) alert ("Please choose a role for the invited person!")
             else {
-                // Actualizare Workspace Settings
+                // Activare loading state
                 this.workspace_settings.loading = true
 
                 // Declarare body request
@@ -760,25 +796,16 @@ export default {
                     role: this.manage_users.new_user.role,
                     invited_by: this.user.id
                 } }
-                
 
                 await axios.post(this.apiURL + 'pending-invitations/', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-                    console.log("Response: ", response)
+                    console.log("response: ", response)
 
-                    // Actualizare active workspace
+                    // Actualizare active workspace si refresh
                     this.fetchActiveWorkspace()
-
-                    // Curatare formular invitare user
-                    this.manage_users.new_user = {
-                        email: null,
-                        role: "",
-                    }
-
-                    // Refresh
                     this.changeView('workspaceSettings')
                 }).catch((error) => {
-                    console.log("Error: ", error)
-                    console.log("Error Response: ", error.response)
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
 
                     // Daca a expirat token-ul
                     if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -786,10 +813,83 @@ export default {
                         this.logout()
                     } else alert(error.response.data.error.message)
 
-                    // Actualizare Workspace Settings
+                    // Dezactivare loading state
                     this.workspace_settings.loading = false
                 })
             }
+        },
+        async updateRole(){
+            console.log("Method: updateRole()")
+
+            // Preluare date
+            var id = this.manage_users.editing_user.id
+
+            // Activare loading state
+            this.workspace_settings.loading = true
+
+            // Declarare body request
+            var user_and_workspace_ID = this.manage_users.users[id].user_and_workspace
+            if (this.manage_users.editing_user.new_role != "manager" && this.manage_users.editing_user.new_role != "analyst"){
+                var the_role = "custom"
+                var the_custom_role = this.manage_users.editing_user.new_role
+            } else {
+                var the_role = this.manage_users.editing_user.new_role
+                var the_custom_role = null
+            }
+            var requestData = { data: {
+                role: the_role,
+                custom_role: the_custom_role
+            } }
+
+            await axios.put(this.apiURL + 'user-and-workspaces/' + user_and_workspace_ID, requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                console.log("response: ", response)
+
+                // Actualizare active workspace si refresh
+                this.fetchActiveWorkspace()
+                this.changeView('workspaceSettings')
+            }).catch((error) => {
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
+
+                // Daca a expirat token-ul
+                if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                    alert("Your session expired, please login again!")
+                    this.logout()
+                } else alert(error.response.data.error.message)
+
+                // Dezactivare loading state
+                this.workspace_settings.loading = false
+            })
+        },
+        async editUser(id){
+            console.log("Method: editUser(" + id + ")")
+
+            // Activare edit state
+            this.manage_users.editing_user.id = id
+        },
+        async leaveWorkspace(uawID){
+            console.log("Method: leaveWorkspace()")
+
+            console.log("uawID: ", uawID)
+
+            await axios.delete(this.apiURL + 'user-and-workspaces/' + uawID, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                console.log("response: ", response)
+
+                // Eliminare workspace din lista user-ului
+                delete this.user.workspaces[this.active_workspace.id]
+
+                // Schimbare active workspace in cel personal
+                this.changeWorkspace(this.user.personal_workspace.id)
+            }).catch((error) => {
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
+
+                // Daca a expirat token-ul
+                if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                    alert("Your session expired, please login again!")
+                    this.logout()
+                } else alert(error.response.data.error.message)
+            })
         },
         manageRolesChanged(){
             if (this.manage_roles.new_role.manage_roles) this.manage_roles.new_role.manage_users = true
@@ -1071,7 +1171,7 @@ export default {
                             p:nth-child(3){
                                 text-transform: capitalize;
                             }
-                            &.owner{
+                            &.noButtons{
                                 padding-right: calc(48px + 60px)
                             }
                             select{
@@ -1080,6 +1180,11 @@ export default {
                                 border-radius: 3px;
                                 padding: 12px 24px;
                                 text-transform: capitalize;
+
+                                &[name="new_role"]{
+                                    padding: 0;
+                                    border: 0;
+                                }
                             }
                             &.inviteUser{
                                 > *{

@@ -69,7 +69,7 @@ export default {
 			else this.registerPopup = !this.registerPopup
 		},
 		async register(){
-			console.log("Register Form:", this.registerForm)
+			console.log("Register Form: ", this.registerForm)
 			this.registerForm.loading = true
 
 			var display_name
@@ -82,7 +82,7 @@ export default {
 				password: this.registerForm.password,
 				display_name: display_name,
 			}).then(async (response) => {
-				console.log("Response:", response)
+				console.log("Response: ", response)
 
 				// Deblocare formular
 				this.registerForm.loading = false
@@ -98,21 +98,21 @@ export default {
 				// Redirectionare la dashboard
 				this.$router.push({ name:'dashboard' })
 			}).catch((error) => {
-          		console.log("Error:", error)
-          		console.log("Error Response:", error.response)
+          		console.log("Error: ", error)
+          		console.log("Error Response: ", error.response)
 				alert(error.response.data.error.message)
 				this.registerForm.loading = false
         	})
 		},
 		async login(){
-			console.log("Login Form:", this.loginForm)
+			console.log("Login Form: ", this.loginForm)
 			this.loginForm.loading = true
 
 			await axios.post(this.apiURL + 'auth/local', {
 				identifier: this.loginForm.email,
 				password: this.loginForm.password,
 			}).then((response) => {
-				console.log("Response:", response)
+				console.log("Response: ", response)
 
 				// Deblocare formular
 				this.loginForm.loading = false
@@ -128,8 +128,8 @@ export default {
 				// Redirectionare la dashboard 
 				this.$router.push({ name:'dashboard' })
 			}).catch((error) => {
-          		console.log("Error:", error)
-          		console.log("Error Response:", error.response)
+          		console.log("Error: ", error)
+          		console.log("Error Response: ", error.response)
 				alert(error.response.data.error.message)
 				this.loginForm.loading = false
         	})

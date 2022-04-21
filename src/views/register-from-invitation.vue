@@ -86,7 +86,7 @@ export default {
 
         // Preluare date despre invitatie
         await axios.get(this.apiURL + 'pending-invitations/' + this.invitation.id + '?populate[0]=workspace&populate[1]=invited_by').then((response) => {
-            console.log("Response: ", response)
+            console.log("response: ", response)
 
             // Actualizare data
             this.invitation.email = response.data.data.attributes.email
@@ -99,30 +99,35 @@ export default {
             this.register_form.email = this.invitation.email
             this.login_form.email = this.invitation.email
         }).catch((error) => {
-            console.log("Error: ", error)
-            console.log("Error Response: ", error.response)
+            console.log("error: ", error)
+            console.log("error.response: ", error.response)
             alert(error.response.data.error.message)
             alert("We will redirect you to the login page.")
+
+            // Deconectare user
             this.logout()
         })
 
         // Verificare daca exista deja contul
         var emailToCheck = encodeURIComponent(this.invitation.email)
         await axios.get(this.apiURL + 'users?filters[email][$eq]=' + emailToCheck).then((response) => {
-            console.log("Response: ", response)
+            console.log("response: ", response)
 
             // Actualizare data
             if (response.data.length) this.userExist = true
         }).catch((error) => {
-            console.log("Error: ", error)
-            console.log("Error Response: ", error.response)
+            console.log("error: ", error)
+            console.log("error.response: ", error.response)
             alert(error.response.data.error.message)
             alert("We will redirect you to the login page.")
+
+            // Deconectare user
             this.logout()
         })
     },
     methods: {
         logout(){
+            console.log("Method: logout()")
             this.$cookies.remove('allspace_user')
             this.$router.push({ name:'login' })
         },
@@ -133,17 +138,18 @@ export default {
                 alert("Please login first!")
                 this.$router.push({ name:'login' })
             } else {
-                this.user.jwt = userData.jwt
-                this.user.id = userData.id
-                this.user.email = userData.email
-                this.user.display_name = userData.display_name
-                console.log("User: ", this.user)
+                let toUpdate = ['jwt', 'id', 'email', 'display_name']
+                toUpdate.forEach(item => this.user[item] = userData[item])
+                console.log("user: ", this.user)
             }
         },
         async register(){
-			console.log("Register Form:", this.register_form)
+			console.log("register_form: ", this.register_form)
+
+            // Activare loading state
 			this.loading = true
 
+            // Preluare date
 			var display_name
 			if (this.register_form.display_name) display_name = this.register_form.display_name
 			else display_name = this.register_form.email
@@ -154,7 +160,7 @@ export default {
 				password: this.register_form.password,
 				display_name: display_name,
 			}).then(async (response) => {
-				console.log("Response:", response)
+				console.log("response: ", response)
 
                 // Setare cookie user
 				this.$cookies.set('allspace_user', {
@@ -175,13 +181,10 @@ export default {
 
                 // Prelucrare invitatie
                 await axios.post(this.apiURL + 'pending-invitations/handleInvitation/', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-
-                }).then(async (response) => {
-				    console.log("Response:", response)
-
+				    console.log("response: ", response)
                 }).catch((error) => {
-                    console.log("Error: ", error)
-                    console.log("Error Response: ", error.response)
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
 
                     // Daca a expirat token-ul
                     if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -191,23 +194,27 @@ export default {
                 })
 
 				// Redirectionare la dashboard
-				this.$router.push({ name: 'dashboard', params: { fromInvitation: true } })
+				this.$router.push({ name: 'dashboard', params: { fromInvitation: this.invitation.workspace.id } })
 			}).catch((error) => {
-          		console.log("Error:", error)
-          		console.log("Error Response:", error.response)
+          		console.log("error: ", error)
+          		console.log("error.response: ", error.response)
 				alert(error.response.data.error.message)
+
+                // Dezactivare loading state
 				this.registerForm.loading = false
         	})
 		},
         async login(){
-			console.log("Login Form:", this.login_form)
+			console.log("login_form: ", this.login_form)
+
+            // Activare loading state
 			this.loading = true
 
 			await axios.post(this.apiURL + 'auth/local', {
 				identifier: this.login_form.email,
 				password: this.login_form.password,
 			}).then((response) => {
-				console.log("Response:", response)
+				console.log("response: ", response)
 
 				// Setare cookie user
 				this.$cookies.set('allspace_user', {
@@ -222,11 +229,15 @@ export default {
 
                 // Actualizare data
                 this.userExist = "connected"
+
+                // Dezactivare loading state
                 this.loading = false
 			}).catch((error) => {
-          		console.log("Error:", error)
-          		console.log("Error Response:", error.response)
+          		console.log("error: ", error)
+          		console.log("error.response: ", error.response)
 				alert(error.response.data.error.message)
+
+                // Dezactivare loading state
 				this.loading = false
         	})
 		},
@@ -240,13 +251,11 @@ export default {
 
                 // Prelucrare invitatie
                 await axios.post(this.apiURL + 'pending-invitations/handleInvitation/', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-
-                }).then(async (response) => {
-				    console.log("Response:", response)
+				    console.log("response: ", response)
                     alert("Invitation was accepted.")
                 }).catch((error) => {
-                    console.log("Error: ", error)
-                    console.log("Error Response: ", error.response)
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
 
                     // Daca a expirat token-ul
                     if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -254,6 +263,9 @@ export default {
                         this.logout()
                     } else alert(error.response.data.error.message)
                 })
+
+                // Redirectionare la dashboard
+                this.$router.push({ name: 'dashboard', params: { fromInvitation: this.invitation.workspace.id } })
             } else {
                 // Declarare body request
                 var requestData = {
@@ -264,13 +276,11 @@ export default {
 
                 // Prelucrare invitatie
                 await axios.post(this.apiURL + 'pending-invitations/handleInvitation/', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
-
-                }).then(async (response) => {
-				    console.log("Response:", response)
+				    console.log("response: ", response)
                     alert("Invitation was declined.")
                 }).catch((error) => {
-                    console.log("Error: ", error)
-                    console.log("Error Response: ", error.response)
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
 
                     // Daca a expirat token-ul
                     if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
@@ -278,10 +288,10 @@ export default {
                         this.logout()
                     } else alert(error.response.data.error.message)
                 })
+
+                // Redirectionare la dashboard
+                this.$router.push({ name: 'dashboard' })
             }
-        
-            // Redirectionare la dashboard
-            this.$router.push({ name: 'dashboard', params: { fromInvitation: true } })
         },
     }
 }
