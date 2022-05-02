@@ -114,41 +114,50 @@ h5{  font-size: 16px; font-weight: 600; }
     }
   }
 
-  .tableRow{
-    display: flex;
-    align-items: center;
-    padding: 12px 24px;
-    gap: 24px;
-
-    > * {
-      width: 128px;
-      &.grow{
-        width: 1px;
-        flex-grow: 1;
-      }
+  .tableRows{
+    .table-no-content{
+      background: #fff;
+      padding: 24px;
+      border-radius: 0 0 3px 3px;
+      font-weight: 600;
     }
 
-    &:not(:last-child){
-      border-bottom: 1px solid var(--main-glass);
-    }
-
-    .rowButtons{
+    .tableRow{
       display: flex;
-      gap: 12px;
-      width: auto;
+      align-items: center;
+      padding: 12px 24px;
+      gap: 24px;
 
-      img{
-          width: 24px;
-          height: 24px;
-          filter: grayscale(1);
-          transition: all 0.3s ease;
-          cursor: pointer;
+      > * {
+        width: 128px;
+        &.grow{
+          width: 1px;
+          flex-grow: 1;
+        }
+      }
 
-          &.twoxbutton{
-            width: 60px;
-          }
+      &:not(:last-child){
+        border-bottom: 1px solid var(--main-glass);
+      }
 
-          &:hover{ filter: none; }
+      .rowButtons{
+        display: flex;
+        gap: 12px;
+        width: auto;
+
+        img{
+            width: 24px;
+            height: 24px;
+            filter: grayscale(1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+
+            &.twoxbutton{
+              width: 60px;
+            }
+
+            &:hover{ filter: none; }
+        }
       }
     }
   }

@@ -4,32 +4,36 @@
             <img src="../assets/logo.png" class="as-logo"/>
             <select id="workspace" name="workspace" v-model="active_workspace.id" @change="changeWorkspace(active_workspace.id)">
                 <option :value="user.personal_workspace.id">{{ user.personal_workspace.name }}</option>
-                <option v-for="(data, id) in user.workspaces" :value="id">{{ data.name }}</option>
+                <template v-for="(data, id) in user.workspaces">
+                    <option v-if="id != user.personal_workspace.id" :value="id">{{ data.name }}</option>
+                </template>
             </select>
 			<div v-if="active_workspace.active" class="as-separator"></div>
             <div v-if="active_workspace.active" class="workspaceSettings">
                 <asButton v-if="view == 'dashboard'" bttnType="third" label="Dashboard" icon="dashboard-main-16.png" iconPosition="left" class="active"/>
                 <asButton v-else bttnType="third" label="Dashboard" icon="dashboard-25gray-16.png" iconPosition="left" @click="changeView('dashboard')"/>
-                <asButton v-if="view == 'workspaceSettings'" bttnType="third" label="Workspace Settings" icon="wrench-main-16.png" iconPosition="left" class="active"/>
-                <asButton v-else bttnType="third" label="Workspace Settings" icon="wrench-25gray-16.png" iconPosition="left" @click="changeView('workspaceSettings')"/>
+                <template v-if="active_workspace.permissions.manage_roles || active_workspace.permissions.manage_users || active_workspace.permissions.manage_tables">
+                    <asButton v-if="view == 'workspaceSettings'" bttnType="third" label="Workspace Settings" icon="wrench-main-16.png" iconPosition="left" class="active"/>
+                    <asButton v-else bttnType="third" label="Workspace Settings" icon="wrench-25gray-16.png" iconPosition="left" @click="changeView('workspaceSettings')"/>
+                </template>
                 <asButton v-if="active_workspace.id != user.personal_workspace.id" bttnType="third" label="Leave Workspace" icon="logout-red-16.png" iconPosition="left" @click="leaveWorkspace(user.workspaces[active_workspace.id].user_and_workspace_ID)"/>
             </div>
 			<div class="as-separator"></div>
             <div class="menuItems">
                 <p v-if="!active_workspace.active" class="setupText">More items will appear here after you finish the setup of this workspace.</p>
                 <template v-else>
-                    <asButton v-if="active_workspace.default_tables.default_tables_clients && view == 'table' && viewTable == 'clients'" bttnType="third" label="Clients" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_clients" bttnType="third" label="Clients" icon="table-25gray-16.png" iconPosition="left"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_contracts && view == 'table' && viewTable == 'contracts'" bttnType="third" label="Contracts" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_contracts" bttnType="third" label="Contracts" icon="table-25gray-16.png" iconPosition="left"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_invoices && view == 'table' && viewTable == 'invoices'" bttnType="third" label="Invoices" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_invoices" bttnType="third" label="Invoices" icon="table-25gray-16.png" iconPosition="left"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_products && view == 'table' && viewTable == 'products'" bttnType="third" label="Products" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_products" bttnType="third" label="Products" icon="table-25gray-16.png" iconPosition="left"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_projects && view == 'table' && viewTable == 'projects'" bttnType="third" label="Projects" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_projects" bttnType="third" label="Projects" icon="table-25gray-16.png" iconPosition="left"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_employees && view == 'table' && viewTable == 'employees'" bttnType="third" label="Employees" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_employees" bttnType="third" label="Employees" icon="table-25gray-16.png" iconPosition="left"/>
+                    <asButton v-if="active_workspace.default_tables.default_tables_clients && view == 'table' && viewTable.name == 'clients'" bttnType="third" label="Clients" icon="table-main-16.png" iconPosition="left" class="active"/>
+                    <asButton v-else-if="active_workspace.default_tables.default_tables_clients" bttnType="third" label="Clients" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('clients')"/>
+                    <asButton v-if="active_workspace.default_tables.default_tables_contracts && view == 'table' && viewTable.name == 'contracts'" bttnType="third" label="Contracts" icon="table-main-16.png" iconPosition="left" class="active"/>
+                    <asButton v-else-if="active_workspace.default_tables.default_tables_contracts" bttnType="third" label="Contracts" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('contracts')"/>
+                    <asButton v-if="active_workspace.default_tables.default_tables_invoices && view == 'table' && viewTable.name == 'invoices'" bttnType="third" label="Invoices" icon="table-main-16.png" iconPosition="left" class="active"/>
+                    <asButton v-else-if="active_workspace.default_tables.default_tables_invoices" bttnType="third" label="Invoices" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('invoices')"/>
+                    <asButton v-if="active_workspace.default_tables.default_tables_products && view == 'table' && viewTable.name == 'products'" bttnType="third" label="Products" icon="table-main-16.png" iconPosition="left" class="active"/>
+                    <asButton v-else-if="active_workspace.default_tables.default_tables_products" bttnType="third" label="Products" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('products')"/>
+                    <asButton v-if="active_workspace.default_tables.default_tables_projects && view == 'table' && viewTable.name == 'projects'" bttnType="third" label="Projects" icon="table-main-16.png" iconPosition="left" class="active"/>
+                    <asButton v-else-if="active_workspace.default_tables.default_tables_projects" bttnType="third" label="Projects" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('projects')"/>
+                    <asButton v-if="active_workspace.default_tables.default_tables_employees && view == 'table' && viewTable.name == 'employees'" bttnType="third" label="Employees" icon="table-main-16.png" iconPosition="left" class="active"/>
+                    <asButton v-else-if="active_workspace.default_tables.default_tables_employees" bttnType="third" label="Employees" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('employees')"/>
 
                     <!-- <asButton bttnType="third" label="Create new table" icon="plus-25gray-16.png" iconPosition="left" @click="newTableWizard()"/> -->
                 </template>
@@ -49,25 +53,34 @@
                 <h5 v-else>Dashboard</h5>
               </template>
               <h5 v-else-if="view == 'workspaceSettings'">Workspace Settings</h5>
+              <h5 v-else-if="view == 'table'">{{ viewTable.name }}</h5>
             </div>
             <div v-if="view == 'dashboard'" class="view-dashboard">
-                <form v-if="!active_workspace.active" class="setupSection" v-on:submit.prevent="saveWorkspaceSetup()">
-                    <div class="sectionBox">
-                        <h5><span style="color: var(--main)">A.</span> Before starting, we’ll need to configure a few things first:</h5>
-                        <div class="as-separator"></div>
-                        <asField label="A.1. Workspace Name" icon="folder-main-16.png" type="text" placeholder="Choose a short and friendly name" name="workspace_name" v-model="active_workspace.name" required/>
-                        <div class="workspace-default-tables">
-                            <p>A.2. Choose Initial tables <span style="color: var(--50-gray)">(after setup you will be able to add custom others too)</span></p>
-                            <label><input type="checkbox" name="defaultTables[]" value="default_tables_clients" v-model="active_workspace.default_tables.default_tables_clients"><p>Clients</p></label>
-                            <label><input type="checkbox" name="defaultTables[]" value="default_tables_contracts" v-model="active_workspace.default_tables.default_tables_contracts"><p>Contracts</p></label>
-                            <label><input type="checkbox" name="defaultTables[]" value="default_tables_invoices" v-model="active_workspace.default_tables.default_tables_invoices"><p>Invoices</p></label>
-                            <label><input type="checkbox" name="defaultTables[]" value="default_tables_products" v-model="active_workspace.default_tables.default_tables_products"><p>Products</p></label>
-                            <label><input type="checkbox" name="defaultTables[]" value="default_tables_projects" v-model="active_workspace.default_tables.default_tables_projects"><p>Projects</p></label>
-                            <label><input type="checkbox" name="defaultTables[]" value="default_tables_employees" v-model="active_workspace.default_tables.default_tables_employees"><p>Employees</p></label>
-                        </div>
-                    </div>
-                    <asButton bttnType="main" icon="arrowRight-white-16.png" label="Save Workspace" :disabled="setupFormReady"/>
-                </form>
+                <template v-if="!active_workspace.permissions.view_dashboard">
+                    <p>You don't have access to the workspace's dashboard. Please select a table from left menu.</p>
+                </template>
+                <template v-else>
+                    <template v-if="!active_workspace.active">
+                        <form v-if="user.workspaces[active_workspace.id].role== 'owner'" class="setupSection" v-on:submit.prevent="saveWorkspaceSetup()">
+                            <div class="sectionBox">
+                                <h5><span style="color: var(--main)">A.</span> Before starting, we’ll need to configure a few things first:</h5>
+                                <div class="as-separator"></div>
+                                <asField label="A.1. Workspace Name" icon="folder-main-16.png" type="text" placeholder="Choose a short and friendly name" name="workspace_name" v-model="active_workspace.name" required/>
+                                <div class="workspace-default-tables">
+                                    <p>A.2. Choose Initial tables <span style="color: var(--50-gray)">(after setup you will be able to add custom others too)</span></p>
+                                    <label><input type="checkbox" name="defaultTables[]" value="default_tables_clients" v-model="active_workspace.default_tables.default_tables_clients"><p>Clients</p></label>
+                                    <label><input type="checkbox" name="defaultTables[]" value="default_tables_contracts" v-model="active_workspace.default_tables.default_tables_contracts"><p>Contracts</p></label>
+                                    <label><input type="checkbox" name="defaultTables[]" value="default_tables_invoices" v-model="active_workspace.default_tables.default_tables_invoices"><p>Invoices</p></label>
+                                    <label><input type="checkbox" name="defaultTables[]" value="default_tables_products" v-model="active_workspace.default_tables.default_tables_products"><p>Products</p></label>
+                                    <label><input type="checkbox" name="defaultTables[]" value="default_tables_projects" v-model="active_workspace.default_tables.default_tables_projects"><p>Projects</p></label>
+                                    <label><input type="checkbox" name="defaultTables[]" value="default_tables_employees" v-model="active_workspace.default_tables.default_tables_employees"><p>Employees</p></label>
+                                </div>
+                            </div>
+                            <asButton bttnType="main" icon="arrowRight-white-16.png" label="Save Workspace" :disabled="setupFormReady"/>
+                        </form>
+                        <p v-else>This workspace is not configured yet. Contact the owner or choose another workspace from left menu.</p>
+                    </template>
+                </template>
             </div>
             <div v-if="view == 'workspaceSettings'" class="view-workspaceSettings" :class="{ 'loading' : workspace_settings.loading }">
                 <div class="sectionBox sb-workspacesettings">
@@ -76,14 +89,16 @@
                         <asButton bttnType="main" label="Save changes" icon="save-white-16.png" @click="saveWorkspaceSettings()"/>
                     </div>
                     <div class="as-separator"></div>
-                    <div class="row">
-                        <asField label="Change workspace name" icon="folder-main-16.png" type="text" placeholder="Choose a short and friendly name" name="workspace_settings_name" v-model="workspace_settings.data.name" required/>
-                        <div class="unlock-all-entries">
-                            <p>Did an entry blocked?</p>
-                            <asButton bttnType="secondary" label="Unlock all entries" icon="unlock-white-16.png" disabled/>
+                    <template v-if="user.workspaces[active_workspace.id].role == 'owner'">
+                        <div class="row">
+                            <asField label="Change workspace name" icon="folder-main-16.png" type="text" placeholder="Choose a short and friendly name" name="workspace_settings_name" v-model="workspace_settings.data.name" required/>
+                            <div class="unlock-all-entries">
+                                <p>Did an entry blocked?</p>
+                                <asButton bttnType="secondary" label="Unlock all entries" icon="unlock-white-16.png" disabled/>
+                            </div>
                         </div>
-                    </div>
-                    <div class="as-separator"></div>
+                        <div class="as-separator"></div>
+                    </template>
                     <div class="manage-default-tables">
                         <p>Enable or disable default tables <span style="color: var(--50-gray)">(disabling an enabled table won’t remove any data)</span></p>
                         <label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_clients" v-model="workspace_settings.data.default_tables.default_tables_clients"><p>Clients</p></label>
@@ -94,7 +109,7 @@
                         <label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_employees" v-model="workspace_settings.data.default_tables.default_tables_employees"><p>Employees</p></label>
                     </div>
                 </div>
-                <div class="sectionBox sb-manageroles">
+                <div class="sectionBox sb-manageroles" v-if="active_workspace.permissions.manage_roles">
                     <div class="sectionBoxHead">
                         <h5>Manage Roles</h5>
                         <asButton v-if="!manage_roles.new_custom_role_row" bttnType="main" label="Add new custom role" icon="plus-white-16.png" @click="manage_roles.new_custom_role_row = true"/>
@@ -211,7 +226,7 @@
                         </div>
                     </div>
                 </div>
-                <form class="sectionBox sb-manageusers" v-on:submit.prevent="sendUserInvitation()">
+                <form class="sectionBox sb-manageusers" v-on:submit.prevent="sendUserInvitation()" v-if="active_workspace.permissions.manage_users">
                     <div class="sectionBoxHead">
                         <h5>Manage Users</h5>
                         <asButton v-if="!manage_users.invite_user_row" bttnType="main" label="Invite user" icon="plus-white-16.png" @click="manage_users.invite_user_row = true"/>
@@ -275,6 +290,24 @@
                     </div>
                 </form>
             </div>
+            <div v-if="view == 'table'" class="view-table">
+                 <div class="table">
+                        <div class="tableHead" v-if="viewTable.name == 'clients'">
+                            <p class="tableHeadItem">CUI</p>
+                            <p class="tableHeadItem">Name</p>
+                            <p class="tableHeadItem">Contact Name</p>
+                            <p class="tableHeadItem">Contact Email</p>
+                            <p class="tableHeadItem">VAT Payer</p>
+                        </div>
+                        <div class="tableRows">
+                            <p v-if="viewTable.content.length == 0" class="table-no-content">There is no content inside this table.</p>
+                            <template v-else>
+                                <div class="tableRow">
+                                </div>
+                            </template>
+                        </div>
+                 </div>
+            </div>
         </div>
     </div>
     <asAccountSettings v-if="accountSettings" @closeAccountSettings="accountSettings = false"/>
@@ -326,9 +359,26 @@ export default {
                     default_tables_employees: null,
                 },
                 custom_roles: null,
+                permissions: {
+                    view_dashboard: false,
+                    manage_roles: false,
+                    manage_users: false,
+                    manage_tables: false,
+                    tables_access: {
+                        clients: 4,
+                        contracts: 4,
+                        invoices: 4,
+                        products: 4,
+                        projects: 4,
+                        employees: 4,
+                    }
+                }
             },
             view: "dashboard",
-            viewTable: null,
+            viewTable: {
+                name: null,
+                content: [],
+            },
             accountSettings: false,
             workspace_settings: {
                 loading: false,
@@ -407,7 +457,7 @@ export default {
             }
 
             // Preluare workspace-uri
-            await axios.get(this.apiURL + 'user-and-workspaces/?populate=*&filters[role][$ne]=owner&filters[user][id][$eq]=' + this.user.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+            await axios.get(this.apiURL + 'user-and-workspaces/?populate=*&filters[user][id][$eq]=' + this.user.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
                 console.log("response: ", response)
 
                 if (!response.data.data.length) console.log("Have only personal workspace")
@@ -481,6 +531,33 @@ export default {
                 let toUpdate = ['active', 'name', 'custom_roles']
                 toUpdate.forEach(item => this.active_workspace[item] = response.data.data.attributes[item])
                 for (let [key, value] of Object.entries(this.active_workspace.default_tables)) this.active_workspace.default_tables[key] = response.data.data.attributes.default_tables[key]
+
+                // Actualizare ce poate vedea user-ul
+                var switch_toUpdate1, switch_toUpdate2 = []
+                switch (this.user.workspaces[this.active_workspace.id].role){
+                    case "owner":
+                        switch_toUpdate1 = ['view_dashboard', 'manage_roles', 'manage_users', 'manage_tables']
+                        switch_toUpdate1.forEach(item => this.active_workspace.permissions[item] = true)
+                        switch_toUpdate2 = ['clients', 'contracts', 'invoices', 'products', 'projects', 'employees']
+                        switch_toUpdate2.forEach(item => this.active_workspace.permissions.tables_access[item] = 2)
+                        break
+                    case "manager":
+                        switch_toUpdate1 = ['view_dashboard', 'manage_roles', 'manage_users', 'manage_tables']
+                        toUpdswitch_toUpdate1ate1.forEach(item => this.active_workspace.permissions[item] = true)
+                        switch_toUpdate2 = ['clients', 'contracts', 'invoices', 'products', 'projects', 'employees']
+                        switch_toUpdate2.forEach(item => this.active_workspace.permissions.tables_access[item] = 2)
+                        break
+                    case "analyst":
+                        switch_toUpdate1 = ['manage_roles', 'manage_users', 'manage_tables']
+                        switch_toUpdate1.forEach(item => this.active_workspace.permissions[item] = false)
+                        this.active_workspace.permissions.view_dashboard = true
+                        switch_toUpdate2 = ['clients', 'contracts', 'invoices', 'products', 'projects', 'employees']
+                        switch_toUpdate2.forEach(item => this.active_workspace.permissions.tables_access[item] = 4)
+                        break
+                    case "custom":
+                        this.active_workspace.permissions = this.active_workspace.custom_roles[this.user.workspaces[this.active_workspace.id].custom_role]
+                        break
+                }
                 
                 console.log("active_workspace: ", this.active_workspace)
 
@@ -891,6 +968,36 @@ export default {
                 } else alert(error.response.data.error.message)
             })
         },
+        async changeTableView(table_name){
+            console.log("Method: changeTableView(" + table_name + ")")
+
+            // Actualizare view
+            this.changeView("table")
+            this.viewTable.name = table_name
+            this.viewTable.content = []
+
+
+            // Declarare body request
+            var requestData = { "workspace": this.active_workspace.id }
+            console.log("requestData: ", requestData)
+
+            // Preluare date
+            await axios.get(this.apiURL + 'table-' + table_name + '/?populate=*&filters[workspace][id][$eq]=' + this.active_workspace.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                console.log("response: ", response)
+
+                if (response.data.data.length){
+                    for (let index in response.data.data){
+                        let item = response.data.data[index]
+                        this.viewTable.content[item.id] = item.attributes
+                    }
+                }
+                console.log("viewTable: ", this.viewTable)
+            }).catch((error) => {
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
+            })
+
+        },
         manageRolesChanged(){
             if (this.manage_roles.new_role.manage_roles) this.manage_roles.new_role.manage_users = true
         }
@@ -989,6 +1096,8 @@ export default {
             img{ width: 16px; height: 16px; }
 
             > :last-child{ color: var(--main) }
+
+            h5{ text-transform: capitalize; }
         }
 
         .view-dashboard{
@@ -1017,6 +1126,17 @@ export default {
                         gap: 4px;
                         margin-right: 16px;
                     }
+                }
+            }
+        }
+
+        .view-table{
+            .table{
+                margin: 0;
+                border-radius: 3px;
+
+                .tableHead{
+                    border-radius: 3px 3px 0 0;
                 }
             }
         }
