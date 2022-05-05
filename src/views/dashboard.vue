@@ -26,14 +26,14 @@
                     <asButton v-else-if="active_workspace.default_tables.default_tables_clients" bttnType="third" label="Clients" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('clients')"/>
                     <asButton v-if="active_workspace.default_tables.default_tables_contracts && view == 'table' && viewTable.name == 'contracts'" bttnType="third" label="Contracts" icon="table-main-16.png" iconPosition="left" class="active"/>
                     <asButton v-else-if="active_workspace.default_tables.default_tables_contracts" bttnType="third" label="Contracts" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('contracts')"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_invoices && view == 'table' && viewTable.name == 'invoices'" bttnType="third" label="Invoices" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_invoices" bttnType="third" label="Invoices" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('invoices')"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_products && view == 'table' && viewTable.name == 'products'" bttnType="third" label="Products" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_products" bttnType="third" label="Products" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('products')"/>
                     <asButton v-if="active_workspace.default_tables.default_tables_projects && view == 'table' && viewTable.name == 'projects'" bttnType="third" label="Projects" icon="table-main-16.png" iconPosition="left" class="active"/>
                     <asButton v-else-if="active_workspace.default_tables.default_tables_projects" bttnType="third" label="Projects" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('projects')"/>
                     <asButton v-if="active_workspace.default_tables.default_tables_employees && view == 'table' && viewTable.name == 'employees'" bttnType="third" label="Employees" icon="table-main-16.png" iconPosition="left" class="active"/>
                     <asButton v-else-if="active_workspace.default_tables.default_tables_employees" bttnType="third" label="Employees" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('employees')"/>
+                    <asButton v-if="active_workspace.default_tables.default_tables_invoices && view == 'table' && viewTable.name == 'invoices'" bttnType="third" label="Invoices" icon="table-main-16.png" iconPosition="left" class="active"/>
+                    <asButton v-else-if="active_workspace.default_tables.default_tables_invoices" bttnType="third" label="Invoices" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('invoices')"/>
+                    <asButton v-if="active_workspace.default_tables.default_tables_products && view == 'table' && viewTable.name == 'products'" bttnType="third" label="Products" icon="table-main-16.png" iconPosition="left" class="active"/>
+                    <asButton v-else-if="active_workspace.default_tables.default_tables_products" bttnType="third" label="Products" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('products')"/>
 
                     <!-- <asButton bttnType="third" label="Create new table" icon="plus-25gray-16.png" iconPosition="left" @click="newTableWizard()"/> -->
                 </template>
@@ -45,15 +45,18 @@
             </div>
         </div>
         <div class="content">
-            <div class="breadcrumbs">
-              <h5>{{ active_workspace.name }}</h5>
-              <img src="../assets/arrowRight-25gray-16.png"/>
-              <template v-if="view == 'dashboard'">
-                <h5 v-if="!active_workspace.active">Setup</h5>
-                <h5 v-else>Dashboard</h5>
-              </template>
-              <h5 v-else-if="view == 'workspaceSettings'">Workspace Settings</h5>
-              <h5 v-else-if="view == 'table'">{{ viewTable.name }}</h5>
+            <div class="screenhead">
+                <div class="breadcrumbs">
+                    <h5>{{ active_workspace.name }}</h5>
+                    <img src="../assets/arrowRight-25gray-16.png"/>
+                    <template v-if="view == 'dashboard'">
+                        <h5 v-if="!active_workspace.active">Setup</h5>
+                        <h5 v-else>Dashboard</h5>
+                    </template>
+                    <h5 v-else-if="view == 'workspaceSettings'">Workspace Settings</h5>
+                    <h5 v-else-if="view == 'table'">{{ viewTable.name }}</h5>
+                </div>
+                <asButton bttnType="secondary" label="Add New Entry" icon="plus-white-16.png" v-if="view == 'table'"/>
             </div>
             <div v-if="view == 'dashboard'" class="view-dashboard">
                 <template v-if="!active_workspace.permissions.view_dashboard">
@@ -70,10 +73,10 @@
                                     <p>A.2. Choose Initial tables <span style="color: var(--50-gray)">(after setup you will be able to add custom others too)</span></p>
                                     <label><input type="checkbox" name="defaultTables[]" value="default_tables_clients" v-model="active_workspace.default_tables.default_tables_clients"><p>Clients</p></label>
                                     <label><input type="checkbox" name="defaultTables[]" value="default_tables_contracts" v-model="active_workspace.default_tables.default_tables_contracts"><p>Contracts</p></label>
-                                    <label><input type="checkbox" name="defaultTables[]" value="default_tables_invoices" v-model="active_workspace.default_tables.default_tables_invoices"><p>Invoices</p></label>
-                                    <label><input type="checkbox" name="defaultTables[]" value="default_tables_products" v-model="active_workspace.default_tables.default_tables_products"><p>Products</p></label>
                                     <label><input type="checkbox" name="defaultTables[]" value="default_tables_projects" v-model="active_workspace.default_tables.default_tables_projects"><p>Projects</p></label>
                                     <label><input type="checkbox" name="defaultTables[]" value="default_tables_employees" v-model="active_workspace.default_tables.default_tables_employees"><p>Employees</p></label>
+                                    <label><input type="checkbox" name="defaultTables[]" value="default_tables_invoices" v-model="active_workspace.default_tables.default_tables_invoices"><p>Invoices</p></label>
+                                    <label><input type="checkbox" name="defaultTables[]" value="default_tables_products" v-model="active_workspace.default_tables.default_tables_products"><p>Products</p></label>
                                 </div>
                             </div>
                             <asButton bttnType="main" icon="arrowRight-white-16.png" label="Save Workspace" :disabled="setupFormReady"/>
@@ -103,10 +106,10 @@
                         <p>Enable or disable default tables <span style="color: var(--50-gray)">(disabling an enabled table won’t remove any data)</span></p>
                         <label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_clients" v-model="workspace_settings.data.default_tables.default_tables_clients"><p>Clients</p></label>
                         <label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_contracts" v-model="workspace_settings.data.default_tables.default_tables_contracts"><p>Contracts</p></label>
-                        <label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_invoices" v-model="workspace_settings.data.default_tables.default_tables_invoices"><p>Invoices</p></label>
-                        <label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_products" v-model="workspace_settings.data.default_tables.default_tables_products"><p>Products</p></label>
                         <label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_projects" v-model="workspace_settings.data.default_tables.default_tables_projects"><p>Projects</p></label>
                         <label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_employees" v-model="workspace_settings.data.default_tables.default_tables_employees"><p>Employees</p></label>
+                        <label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_invoices" v-model="workspace_settings.data.default_tables.default_tables_invoices"><p>Invoices</p></label>
+                        <label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_products" v-model="workspace_settings.data.default_tables.default_tables_products"><p>Products</p></label>
                     </div>
                 </div>
                 <div class="sectionBox sb-manageroles" v-if="active_workspace.permissions.manage_roles">
@@ -197,18 +200,6 @@
                                             <option value="4">None</option><option value="3">Analyze</option><option value="2">Management</option>
                                         </select>
                                     </div>
-                                    <div class="listItem" v-if="active_workspace.default_tables.default_tables_invoices">
-                                        <p>Invoices:</p>
-                                        <select name="newRole_accessTable_invoices" v-model.number="manage_roles.new_role.tables_access.invoices">
-                                            <option value="4">None</option><option value="3">Analyze</option><option value="2">Management</option>
-                                        </select>
-                                    </div>
-                                    <div class="listItem" v-if="active_workspace.default_tables.default_tables_products">
-                                        <p>Products:</p>
-                                        <select name="newRole_accessTable_products" v-model.number="manage_roles.new_role.tables_access.products">
-                                            <option value="4">None</option><option value="3">Analyze</option><option value="2">Management</option>
-                                        </select>
-                                    </div>
                                     <div class="listItem" v-if="active_workspace.default_tables.default_tables_projects">
                                         <p>Projects:</p>
                                         <select name="newRole_accessTable_projects" v-model.number="manage_roles.new_role.tables_access.projects">
@@ -218,6 +209,18 @@
                                     <div class="listItem" v-if="active_workspace.default_tables.default_tables_employees">
                                         <p>Employees:</p>
                                         <select name="newRole_accessTable_employees" v-model.number="manage_roles.new_role.tables_access.employees">
+                                            <option value="4">None</option><option value="3">Analyze</option><option value="2">Management</option>
+                                        </select>
+                                    </div>
+                                    <div class="listItem" v-if="active_workspace.default_tables.default_tables_invoices">
+                                        <p>Invoices:</p>
+                                        <select name="newRole_accessTable_invoices" v-model.number="manage_roles.new_role.tables_access.invoices">
+                                            <option value="4">None</option><option value="3">Analyze</option><option value="2">Management</option>
+                                        </select>
+                                    </div>
+                                    <div class="listItem" v-if="active_workspace.default_tables.default_tables_products">
+                                        <p>Products:</p>
+                                        <select name="newRole_accessTable_products" v-model.number="manage_roles.new_role.tables_access.products">
                                             <option value="4">None</option><option value="3">Analyze</option><option value="2">Management</option>
                                         </select>
                                     </div>
@@ -292,17 +295,26 @@
             </div>
             <div v-if="view == 'table'" class="view-table">
                  <div class="table">
-                        <div class="tableHead" v-if="viewTable.name == 'clients'">
-                            <p class="tableHeadItem">CUI</p>
-                            <p class="tableHeadItem">Name</p>
-                            <p class="tableHeadItem">Contact Name</p>
-                            <p class="tableHeadItem">Contact Email</p>
-                            <p class="tableHeadItem">VAT Payer</p>
+                        <div class="tableHead">
+                            <p v-for="(label, name) in viewTable.structure[viewTable.name]" class="tableHeadItem">{{ label }}</p>
                         </div>
                         <div class="tableRows">
                             <p v-if="viewTable.content.length == 0" class="table-no-content">There is no content inside this table.</p>
                             <template v-else>
-                                <div class="tableRow">
+                                <div class="tableRow" v-for="(data, id) in viewTable.content" :key="id">
+                                    <div class="rowButtons">
+                                        <img src="../assets/icBttn-mainGlass-25gray-see.png" @click="seeTableItem(id)">
+                                    </div>
+                                    <template v-for="(value, name) in data">
+                                        <p v-if="value === true">Yes</p>
+                                        <p v-else-if="value === false">No</p>
+                                        <template v-else-if="typeof value === 'object'">
+                                            <p v-for="item in value">{{ item }}</p>
+                                        </template>
+                                        <template v-else>
+                                            <p>{{ value }} <template v-if="['project_value', 'invoice_total', 'product_unit_value'].includes(name)">EUR</template></p>
+                                        </template>
+                                    </template>
                                 </div>
                             </template>
                         </div>
@@ -337,10 +349,10 @@ export default {
                     default_tables: {
                         default_tables_clients: null,
                         default_tables_contracts: null,
-                        default_tables_invoices: null,
-                        default_tables_products: null,
                         default_tables_projects: null,
                         default_tables_employees: null,
+                        default_tables_invoices: null,
+                        default_tables_products: null,
                     },
                     custom_roles: null,
                 },
@@ -353,10 +365,10 @@ export default {
                 default_tables: {
                     default_tables_clients: null,
                     default_tables_contracts: null,
-                    default_tables_invoices: null,
-                    default_tables_products: null,
                     default_tables_projects: null,
                     default_tables_employees: null,
+                    default_tables_invoices: null,
+                    default_tables_products: null,
                 },
                 custom_roles: null,
                 permissions: {
@@ -367,10 +379,10 @@ export default {
                     tables_access: {
                         clients: 4,
                         contracts: 4,
-                        invoices: 4,
-                        products: 4,
                         projects: 4,
                         employees: 4,
+                        invoices: 4,
+                        products: 4,
                     }
                 }
             },
@@ -378,6 +390,46 @@ export default {
             viewTable: {
                 name: null,
                 content: [],
+                structure: {
+                    clients: {
+                        "client_cui": "CUI",
+                        "client_name": "Name",
+                        "client_contact_person[person_name]": "Contact Name",
+                        "client_contact_person[person_email]": "Contact Email",
+                        "client_vat_payer": "VAT Payer"
+                    },
+                    contracts: {
+                        "id": "Contract Number",
+                        "contract_date": "Contract Date",
+                        "contract_status": "Status",
+                        "contract_client[findDeep][client_name]": "Client",
+                    },
+                    projects: {
+                        "project_name": "Name",
+                        "project_status": "Status",
+                        "project_deadline": "Deadline",
+                        "project_value": "Value",
+                        "project_contract[findDeep][id]": "Contract Number"
+                    },
+                    employees: {
+                        "employee_name": "Name",
+                        "employee_cnp": "CNP"
+                    },
+                    invoices: {
+                        "id": "Invoice number",
+                        "invoice_issue_date": "Issue Date",
+                        "invoice_due_date": "Due Date",
+                        "invoice_project[findDeep][project_name]": "Project",
+                        "invoice_total": "Value",
+                        "invoice_paid": "Paid"
+                    },
+                    products: {
+                        "id": "Product ID",
+                        "product_name": "Name",
+                        "product_quantity_unit": "Quantity Unit",
+                        "product_unit_value": "Unit Value",
+                    },
+                }
             },
             accountSettings: false,
             workspace_settings: {
@@ -387,10 +439,10 @@ export default {
                     default_tables: {
                         default_tables_clients: null,
                         default_tables_contracts: null,
-                        default_tables_invoices: null,
-                        default_tables_products: null,
                         default_tables_projects: null,
                         default_tables_employees: null,
+                        default_tables_invoices: null,
+                        default_tables_products: null,
                     }
                 }
             },
@@ -405,10 +457,10 @@ export default {
                     tables_access: {
                         clients: 4,
                         contracts: 4,
-                        invoices: 4,
-                        products: 4,
                         projects: 4,
                         employees: 4,
+                        invoices: 4,
+                        products: 4,
                     }
                 }
             },
@@ -538,20 +590,20 @@ export default {
                     case "owner":
                         switch_toUpdate1 = ['view_dashboard', 'manage_roles', 'manage_users', 'manage_tables']
                         switch_toUpdate1.forEach(item => this.active_workspace.permissions[item] = true)
-                        switch_toUpdate2 = ['clients', 'contracts', 'invoices', 'products', 'projects', 'employees']
+                        switch_toUpdate2 = ['clients', 'contracts', 'projects', 'employees', 'invoices', 'products']
                         switch_toUpdate2.forEach(item => this.active_workspace.permissions.tables_access[item] = 2)
                         break
                     case "manager":
                         switch_toUpdate1 = ['view_dashboard', 'manage_roles', 'manage_users', 'manage_tables']
                         toUpdswitch_toUpdate1ate1.forEach(item => this.active_workspace.permissions[item] = true)
-                        switch_toUpdate2 = ['clients', 'contracts', 'invoices', 'products', 'projects', 'employees']
+                        switch_toUpdate2 = ['clients', 'contracts', 'projects', 'employees', 'invoices', 'products']
                         switch_toUpdate2.forEach(item => this.active_workspace.permissions.tables_access[item] = 2)
                         break
                     case "analyst":
                         switch_toUpdate1 = ['manage_roles', 'manage_users', 'manage_tables']
                         switch_toUpdate1.forEach(item => this.active_workspace.permissions[item] = false)
                         this.active_workspace.permissions.view_dashboard = true
-                        switch_toUpdate2 = ['clients', 'contracts', 'invoices', 'products', 'projects', 'employees']
+                        switch_toUpdate2 = ['clients', 'contracts', 'projects', 'employees', 'invoices', 'products']
                         switch_toUpdate2.forEach(item => this.active_workspace.permissions.tables_access[item] = 4)
                         break
                     case "custom":
@@ -588,10 +640,10 @@ export default {
                 "default_tables": {
                     "default_tables_clients": this.active_workspace.default_tables.default_tables_clients,
                     "default_tables_contracts": this.active_workspace.default_tables.default_tables_contracts,
-                    "default_tables_invoices": this.active_workspace.default_tables.default_tables_invoices,
-                    "default_tables_products": this.active_workspace.default_tables.default_tables_products,
                     "default_tables_projects": this.active_workspace.default_tables.default_tables_projects,
                     "default_tables_employees": this.active_workspace.default_tables.default_tables_employees,
+                    "default_tables_invoices": this.active_workspace.default_tables.default_tables_invoices,
+                    "default_tables_products": this.active_workspace.default_tables.default_tables_products,
                 }
             } }
             console.log("requestData: ", requestData)
@@ -645,7 +697,7 @@ export default {
                     manage_roles: false,
                     manage_users: false,
                     manage_tables: false,
-                    tables_access: { clients: 4, contracts: 4, invoices: 4, products: 4, projects: 4, employees: 4 }
+                    tables_access: { clients: 4, contracts: 4, projects: 4, employees: 4, invoices: 4, products: 4 }
                 }
                 this.manage_users.invite_user_row = false
                 this.manage_users.editing_user = { id: null, new_role: "" }
@@ -988,13 +1040,38 @@ export default {
                 if (response.data.data.length){
                     for (let index in response.data.data){
                         let item = response.data.data[index]
-                        this.viewTable.content[item.id] = item.attributes
+                        this.viewTable.content[item.id] = {}
+                        for (let value in this.viewTable.structure[this.viewTable.name]){
+                            if (value == "id") this.viewTable.content[item.id].id = item.id
+                            else {
+                                let subitem = value.replace( /(^.*\[|\].*$)/g, '' )
+                                if (subitem != value){
+                                    if (value.replace(/[^[]/g, "").length > 1){
+                                        let mainitem = value.substr(0, value.indexOf('['))
+                                        if (!this.viewTable.content[item.id][mainitem]) this.viewTable.content[item.id][mainitem] = {}
+                                        if (subitem == "id") this.viewTable.content[item.id][mainitem][subitem] = item.attributes[mainitem].data.id
+                                        else this.viewTable.content[item.id][mainitem][subitem] = item.attributes[mainitem].data.attributes[subitem]
+                                    } else {
+                                        let mainitem = value.substr(0, value.indexOf('['))
+                                        if (!this.viewTable.content[item.id][mainitem]) this.viewTable.content[item.id][mainitem] = {}
+                                        this.viewTable.content[item.id][mainitem][subitem] = item.attributes[mainitem][subitem]
+                                    }
+                                } else this.viewTable.content[item.id][value] = item.attributes[value]
+                            }
+                        }
                     }
                 }
+                this.viewTable.content = this.viewTable.content.filter(function (el) { return el != null })
                 console.log("viewTable: ", this.viewTable)
             }).catch((error) => {
                 console.log("error: ", error)
                 console.log("error.response: ", error.response)
+
+                // Daca a expirat token-ul
+                if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                    alert("Your session expired, please login again!")
+                    this.logout()
+                } else alert(error.response.data.error.message)
             })
 
         },
@@ -1088,16 +1165,23 @@ export default {
         padding: 24px;
         gap: 24px;
 
-        .breadcrumbs{
+        .screenhead{
             display: flex;
             align-items: center;
-            gap: 4px;
+            justify-content: space-between;
+            gap: 24px;
 
-            img{ width: 16px; height: 16px; }
+            .breadcrumbs{
+                display: flex;
+                align-items: center;
+                gap: 4px;
 
-            > :last-child{ color: var(--main) }
+                img{ width: 16px; height: 16px; }
 
-            h5{ text-transform: capitalize; }
+                > :last-child{ color: var(--main) }
+
+                h5{ text-transform: capitalize; }
+            }
         }
 
         .view-dashboard{
@@ -1137,6 +1221,24 @@ export default {
 
                 .tableHead{
                     border-radius: 3px 3px 0 0;
+                    .tableHeadItem{
+                        flex-grow: 1;
+                        &:first-child{ margin-left: 48px; }
+                    }
+                }
+
+                .tableRows{
+                    background: var(--pure-white);
+                    border-radius: 0 0 3px 3px;
+
+                    .tableRow{
+                        p{
+                            flex-grow: 1;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                            overflow: hidden;
+                        }
+                    }
                 }
             }
         }
