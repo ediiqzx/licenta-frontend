@@ -22,19 +22,12 @@
             <div class="menuItems">
                 <p v-if="!active_workspace.active" class="setupText">More items will appear here after you finish the setup of this workspace.</p>
                 <template v-else>
-                    <asButton v-if="active_workspace.default_tables.default_tables_clients && view == 'table' && viewTable.name == 'clients'" bttnType="third" label="Clients" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_clients" bttnType="third" label="Clients" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('clients')"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_contracts && view == 'table' && viewTable.name == 'contracts'" bttnType="third" label="Contracts" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_contracts" bttnType="third" label="Contracts" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('contracts')"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_projects && view == 'table' && viewTable.name == 'projects'" bttnType="third" label="Projects" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_projects" bttnType="third" label="Projects" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('projects')"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_employees && view == 'table' && viewTable.name == 'employees'" bttnType="third" label="Employees" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_employees" bttnType="third" label="Employees" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('employees')"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_invoices && view == 'table' && viewTable.name == 'invoices'" bttnType="third" label="Invoices" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_invoices" bttnType="third" label="Invoices" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('invoices')"/>
-                    <asButton v-if="active_workspace.default_tables.default_tables_products && view == 'table' && viewTable.name == 'products'" bttnType="third" label="Products" icon="table-main-16.png" iconPosition="left" class="active"/>
-                    <asButton v-else-if="active_workspace.default_tables.default_tables_products" bttnType="third" label="Products" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView('products')"/>
-
+                    <template v-for="(table, index) in ['clients', 'contracts', 'projects', 'employees', 'invoices', 'products']">
+                        <template v-if="active_workspace.default_tables['default_tables_' + table] && active_workspace.permissions.tables_access[table] != 4">
+                            <asButton v-if="view == 'table' && viewTable.name == table" bttnType="third" :label="table" icon="table-main-16.png" iconPosition="left" class="active"/>
+                            <asButton v-else bttnType="third" :label="table" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView(table)"/>
+                        </template>
+                    </template>
                     <!-- <asButton bttnType="third" label="Create new table" icon="plus-25gray-16.png" iconPosition="left" @click="newTableWizard()"/> -->
                 </template>
             </div>
@@ -54,9 +47,14 @@
                         <h5 v-else>Dashboard</h5>
                     </template>
                     <h5 v-else-if="view == 'workspaceSettings'">Workspace Settings</h5>
-                    <h5 v-else-if="view == 'table'">{{ viewTable.name }}</h5>
+                    <h5 v-else-if="view == 'table' || view == 'entry'">{{ viewTable.name }}</h5>
+                    <template v-if="view == 'entry'"><img src="../assets/arrowRight-25gray-16.png"/><h5>{{ viewEntry.id }}</h5></template>
                 </div>
-                <asButton bttnType="secondary" label="Add New Entry" icon="plus-white-16.png" v-if="view == 'table'"/>
+                <template v-if="active_workspace.permissions.tables_access[viewTable.name] < 3">
+                    <asButton bttnType="secondary" label="Add New Entry" icon="plus-white-16.png" v-if="view == 'table'"/>
+                    <asButton bttnType="secondary" label="Edit Entry" icon="edit-white-16.png" v-if="view == 'entry'"/>
+                    <asButton bttnType="secondary" label="Delete Entry" icon="delete-white-16.png" v-if="view == 'entry'"/>
+                </template>
             </div>
             <div v-if="view == 'dashboard'" class="view-dashboard">
                 <template v-if="!active_workspace.permissions.view_dashboard">
@@ -303,7 +301,7 @@
                             <template v-else>
                                 <div class="tableRow" v-for="(data, id) in viewTable.content" :key="id">
                                     <div class="rowButtons">
-                                        <img src="../assets/icBttn-mainGlass-25gray-see.png" @click="seeTableItem(id)">
+                                        <img src="../assets/icBttn-mainGlass-25gray-see.png" @click="seeEntry(id)">
                                     </div>
                                     <template v-for="(value, name) in data">
                                         <p v-if="value === true">Yes</p>
@@ -319,6 +317,102 @@
                             </template>
                         </div>
                  </div>
+            </div>
+            <div v-if="view == 'entry'" class="view-entry">
+                <div class="left">
+                    <div class="sectionBox boxtype1">
+                        <h5>Entry details</h5><div class="as-separator"></div>
+                        <div class="entryFields">
+                            <template v-for="item in viewEntry.structure[viewTable.name].fields">
+                                <template v-if="item.composed && viewEntry.content[item.name] != null">
+                                    <!-- <br><br><br>{{ item }} -->
+                                    <template v-if="item.name == 'id'">
+                                        <asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content.id" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'number'">
+                                        <asField background="#F7F7F7" type="number" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name][item.name2]" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'text'">
+                                        <asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name][item.name2]" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'toggle'">
+                                        <asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name][item.name2] == true ? 'Yes' : 'No'" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'email'">
+                                        <asField background="#F7F7F7" type="email" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name][item.name2]" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'date'">
+                                        <asField background="#F7F7F7" type="date" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name][item.name2]" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'dropdown'">
+                                        <asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name][item.name2]" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'currency'">
+                                        <asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name][item.name2] + ' EUR'" placeholder="No data here" :required="item.required" disabled/>
+                                    </template>
+                                </template><template v-else-if="!item.composed">
+                                    <!-- <br><br><br>{{ item }} -->
+                                     <template v-if="item.name == 'id'">
+                                        <asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content.id" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'text'">
+                                        <asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name]" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'email'">
+                                        <asField background="#F7F7F7" type="email" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name]" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'number'">
+                                        <asField background="#F7F7F7" type="number" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name]" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'toggle'">
+                                        <asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name] == true ? 'Yes' : 'No'" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'date'">
+                                        <asField background="#F7F7F7" type="date" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name]" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'dropdown'">
+                                        <asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name]" placeholder="No data here" :required="item.required" disabled/>
+                                    </template><template v-else-if="item.type == 'currency'">
+                                        <asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name] + ' EUR'" placeholder="No data here" :required="item.required" disabled/>
+                                    </template>
+                                </template>
+                            </template>
+                        </div>
+                    </div>
+                    <div v-if="viewEntry.structure[viewTable.name].mainRelation" class="sectionBox boxtype2">
+                        <div class="sectionBoxHead">
+                            <h5>{{ viewEntry.structure[viewTable.name].singular }}'s {{ viewEntry.structure[viewTable.name].mainRelation.table }}</h5>
+                            <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 4" bttnType="third" :label="'See ' + viewEntry.structure[viewTable.name].mainRelation.table + ' entry'" icon="see-25gray-16.png" @click="seeEntry(1, viewEntry.structure[viewTable.name].mainRelation.table + 's')"/>
+                        </div>
+                        <div class="as-separator"></div>
+                        <div class="entryFields">
+                            <template v-for="item in viewEntry.structure[viewTable.name].mainRelation.fields" v-if="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table] != null">
+                                <asField v-if="item.type == 'toggle'" background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.attributes[item.name] == true ? 'Yes' : 'No'" placeholder="No data here" required disabled/>
+                                <asField v-if="item.type == 'currency'" background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.attributes[item.name] + ' EUR'" placeholder="No data here" required disabled/>
+                                <asField v-else-if="item.name == 'id'" background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.id" placeholder="No data here" required disabled/>
+                                <asField v-else background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.attributes[item.name]" placeholder="No data here" required disabled/>
+                            </template>
+                        </div>
+                    </div>
+                    <div v-for="item in viewEntry.structure[viewTable.name].otherRelations" class="sectionBox boxtype3">
+                        <div class="sectionBoxHead">
+                            <h5>{{ viewEntry.structure[viewTable.name].singular }}'s {{ item.table }}(s)</h5>
+                            <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 3" bttnType="third" :label="'Add new ' + item.table" icon="plus-25gray-16.png" @click=""/>
+                        </div>
+                        <div class="table">
+                            <div class="tableHead" :class="{ 'noPadding' : item.special }">
+                               <p v-for="field in item.fields" class="tableHeadItem grow">{{ field.label }}</p>
+                            </div>
+                            <div class="tableRows" v-if="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + item.table + 's']">
+                                <div v-for="subitem in viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + item.table + 's'].data" class="tableRow">  
+                                    <div class="rowButtons" v-if="!item.special">
+                                        <img src="../assets/icBttn-mainGlass-25gray-see.png" @click="seeEntry(subitem.id, item.table + 's')">
+                                    </div>
+                                    <template v-for="field in item.fields">
+                                        <template v-if="field.composed">
+                                            <!-- {{ subitem.attributes }} -->
+                                            <p class="grow">{{ subitem.attributes[field.name].data.attributes[field.name2] }}<template v-if="field.type == 'currency'"> EUR</template></p>
+                                        </template><template v-else>
+                                            <p v-if="field.name == 'id'" class="grow">{{ subitem.id }}</p>
+                                            <p v-else-if="field.type == 'toggle'" class="grow">{{ subitem.attributes[field.name] == true ? 'Yes' : 'No' }}</p>
+                                            <p v-else class="grow">{{ subitem.attributes[field.name] }}<template v-if="field.type == 'currency'"> EUR</template></p>
+                                        </template>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="right">
+
+                </div>
             </div>
         </div>
     </div>
@@ -430,6 +524,172 @@ export default {
                         "product_unit_value": "Unit Value",
                     },
                 }
+            },
+            viewEntry: {
+                id: null,
+                structure: {
+                    clients: {
+                        singular: 'Client',
+                        singularandlower: 'client',
+                        fields: [
+                            { name: 'client_cui', label: 'Client CUI', type: 'number', required: true, },
+                            { name: 'client_name', label: 'Client name', type: 'text', required: true, },
+                            { name: 'client_trade_register_number', label: 'Client trade register number', type: 'text', },
+                            { name: 'client_address', label: 'Client address', type: 'text', required: true, },
+                            { name: 'client_iban', label: 'Client IBAN', type: 'text', },
+                            { name: 'client_vat_payer', label: 'Client VAT payer', type: 'toggle', required: true, },
+                            { name: 'client_contact_person', name2: 'person_name', label: 'Client contact name', type: 'text', composed: true, },
+                            { name: 'client_contact_person', name2: 'person_email', label: 'Client contact email', type: 'email', composed: true, },
+                            { name: 'client_contact_person', name2: 'person_phone', label: 'Client contact phone', type: 'text', composed: true, },
+                        ],
+                        otherRelations: [
+                            {
+                                table: 'contract',
+                                fields: [
+                                    { name: 'id', label: 'Contract number', type: 'disabled' },
+                                    { name: 'contract_date', label: 'Contract date', type: 'date' },
+                                    { name: 'contract_status', label: 'Contract status', type: 'dropdown' }
+                                ]
+                            }
+                        ],
+                    },
+                    contracts: {
+                        singular: 'Contract',
+                        singularandlower: 'contract',
+                        fields: [
+                            { name: 'id', label: 'Contract number', type: 'disabled', required: true, },
+                            { name: 'contract_date', label: 'Contract date', type: 'date', required: true, },
+                            { name: 'contract_status', label: 'Contract status', type: 'dropdown', required: true, }
+                        ],
+                        mainRelation: {
+                            table: 'client',
+                            fields: [
+                                { name: 'client_cui', label: 'Client CUI' },
+                                { name: 'client_name', label: 'Client name' },
+                                { name: 'client_trade_register_number', label: 'Client trade register number' },
+                                { name: 'client_address', label: 'Client address' },
+                                { name: 'client_iban', label: 'Client IBAN' },
+                                { name: 'client_vat_payer', label: 'Client VAT payer', type: 'toggle' }
+                            ],
+                        },
+                        otherRelations: [
+                            {
+                                table: 'project',
+                                fields: [
+                                    { name: 'project_name', label: 'Project name', type: 'text', },
+                                    { name: 'project_status', label: 'Project status', type: 'dropdown', },
+                                    { name: 'project_deadline', label: 'Project deadline', type: 'date', },
+                                    { name: 'project_value', label: 'Project value', type: 'currency', }
+                                ]
+                            }
+                        ]
+                    },
+                    projects: {
+                        singular: 'Project',
+                        singularandlower: 'project',
+                        fields: [
+                            { name: 'project_name', label: 'Project name', type: 'text', required: true, },
+                            { name: 'project_status', label: 'Project status', type: 'dropdown', required: true, },
+                            { name: 'project_deadline', label: 'Project deadline', type: 'date', required: true, },
+                            { name: 'project_value', label: 'Project value', type: 'disabled', required: true, }
+                        ],
+                        mainRelation: {
+                            table: 'contract',
+                            fields: [
+                                { name: 'id', label: 'Contract number' },
+                                { name: 'contract_date', label: 'Contract date' },
+                                { name: 'contract_status', label: 'Contract status' },
+                            ],
+                        },
+                        otherRelations: [
+                            {
+                                table: 'invoice',
+                                fields: [
+                                    { name: 'id', label: 'Invoice number', type: 'disabled', },
+                                    { name: 'invoice_issue_date', label: 'Issue date', type: 'date', },
+                                    { name: 'invoice_due_date', label: 'Due date', type: 'date', },
+                                    { name: 'invoice_total', label: 'Invoice total', type: 'currency', },
+                                    { name: 'invoice_paid', label: 'Invoice paid', type: 'toggle', },
+                                    { name: 'invoice_paid_date', label: 'Paid date', type: 'date', },
+                                ]
+                            },
+                            {
+                                table: 'task',
+                                special: true,
+                                fields: [
+                                    { name: 'task_description', label: 'Task description', type: 'text', },
+                                    { name: 'task_deadline', label: 'Deadline', type: 'date', },
+                                    { name: 'task_done', label: 'Task done', type: 'toggle', },
+                                    { name: 'task_employee', name2: 'employee_name', label: 'Employee', type: 'text', composed: true },
+                                ]
+                            }
+                        ]
+                    },
+                    employees: {
+                        singular: 'Employee',
+                        singularandlower: 'employee',
+                        fields: [
+                            { name: 'employee_name', label: 'Employee name', type: 'text', required: true, },
+                            { name: 'employee_cnp', label: 'Employee CNP', type: 'text', required: true, },
+                        ],
+                        otherRelations: [
+                            {
+                                table: 'task',
+                                special: true,
+                                fields: [
+                                    { name: 'task_description', label: 'Task description', type: 'text', },
+                                    { name: 'task_deadline', label: 'Deadline', type: 'date', },
+                                    { name: 'task_done', label: 'Task done', type: 'toggle', }
+                                ]
+                            }
+                        ]
+                    },
+                    invoices: {
+                        singular: 'Invoice',
+                        singularandlower: 'invoice',
+                        fields: [
+                            { name: 'id', label: 'Invoice number', type: 'disabled', required: true, },
+                            { name: 'invoice_issue_date', label: 'Issue date', type: 'date', required: true, },
+                            { name: 'invoice_due_date', label: 'Due date', type: 'date', },
+                            { name: 'invoice_total', label: 'Invoice total', type: 'currency', required: true, },
+                            { name: 'invoice_paid', label: 'Invoice paid', type: 'toggle', },
+                            { name: 'invoice_paid_date', label: 'Paid date', type: 'date', },
+                        ],
+                        mainRelation: {
+                            table: 'project',
+                            fields: [
+                                { name: 'project_name', label: 'Project name' },
+                                { name: 'project_status', label: 'Project status' },
+                                { name: 'project_deadline', label: 'Project deadline' },
+                                { name: 'project_value', label: 'Project value', type: 'currency' }
+                            ],
+                        },
+                        otherRelations: [
+                            {
+                                table: 'item',
+                                special: true,
+                                fields: [
+                                    { name: 'item_product', name2: 'product_name', label: 'Product name', type: 'text', composed: true },
+                                    { name: 'item_quantity',label: 'Quantity', type: 'number' },
+                                    { name: 'item_product', name2: 'product_quantity_unit', label: 'M.U.', type: 'text', composed: true },
+                                    { name: 'item_product', name2: 'product_unit_value', label: 'Unit value', type: 'currency', composed: true },
+                                ]
+                            }
+                        ]
+                    },
+                    products: {
+                        singular: 'Product',
+                        singularandlower: 'product',
+                        fields: [
+                            { name: 'id', label: 'Product ID', type: 'disabled', required: true },
+                            { name: 'product_name', label: 'Product name', type: 'text', required: true },
+                            { name: 'product_description', label: 'Product description', type: 'text', required: true },
+                            { name: 'product_quantity_unit', label: 'Product quantity unit', type: 'text', required: true },
+                            { name: 'product_unit_value', label: 'Product unit value', type: 'currency', required: true },
+                        ],
+                    }
+                },
+                content: {},
             },
             accountSettings: false,
             workspace_settings: {
@@ -1026,7 +1286,7 @@ export default {
             // Actualizare view
             this.changeView("table")
             this.viewTable.name = table_name
-            this.viewTable.content = []
+            this.viewTable.content = {}
 
 
             // Declarare body request
@@ -1054,14 +1314,15 @@ export default {
                                     } else {
                                         let mainitem = value.substr(0, value.indexOf('['))
                                         if (!this.viewTable.content[item.id][mainitem]) this.viewTable.content[item.id][mainitem] = {}
-                                        this.viewTable.content[item.id][mainitem][subitem] = item.attributes[mainitem][subitem]
+                                        if (item.attributes[mainitem] != null) this.viewTable.content[item.id][mainitem][subitem] = item.attributes[mainitem][subitem]
+                                        else this.viewTable.content[item.id][mainitem][subitem] = "-"
                                     }
                                 } else this.viewTable.content[item.id][value] = item.attributes[value]
                             }
                         }
                     }
                 }
-                this.viewTable.content = this.viewTable.content.filter(function (el) { return el != null })
+                // this.viewTable.content = this.viewTable.content.filter(function (el) { return el != null })
                 console.log("viewTable: ", this.viewTable)
             }).catch((error) => {
                 console.log("error: ", error)
@@ -1074,6 +1335,42 @@ export default {
                 } else alert(error.response.data.error.message)
             })
 
+        },
+        async seeEntry(entryID, tableName){
+            console.log("Method: seeEntry(" + entryID + ", " + tableName + ")")
+
+            if (tableName){
+                this.changeTableView(tableName)
+                this.seeEntry(entryID)
+            } else {
+                // Actualizare view
+                this.changeView("entry")
+                this.viewEntry.id = entryID
+                this.viewEntry.content = {}
+
+                // Declarare populateValue
+                var populateValue = 'populate=*'
+                if (this.viewTable.name == 'invoices') populateValue = "populate[invoice_project]=*" + "&populate[invoice_items][populate][0]=item_product"
+                else if (this.viewTable.name == 'projects') populateValue = "populate[project_invoices]=*" + "&populate[project_tasks][populate][0]=task_employee"
+
+                // Preluare date
+                await axios.get(this.apiURL + 'table-' + this.viewTable.name + '/' + entryID + '/?' + populateValue, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
+                    console.log("response: ", response)
+
+                    // Preluare date despre entry
+                    this.viewEntry.content = response.data.data.attributes
+                    this.viewEntry.content.id = response.data.data.id
+                }).catch((error) => {
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
+
+                    // Daca a expirat token-ul
+                    if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                        alert("Your session expired, please login again!")
+                        this.logout()
+                    } else alert(error.response.data.error.message)
+                })
+            }
         },
         manageRolesChanged(){
             if (this.manage_roles.new_role.manage_roles) this.manage_roles.new_role.manage_users = true
@@ -1127,12 +1424,9 @@ export default {
                     :deep(p) { color: var(--main); }
                 }
 
-                // &:last-child{
-                //     opacity: 0.5;
-                //     &:hover{
-                //         opacity: 1;
-                //     }
-                // }
+                :deep(p){
+                    text-transform: capitalize;
+                }
             }
 
             .setupText{
@@ -1175,6 +1469,7 @@ export default {
                 display: flex;
                 align-items: center;
                 gap: 4px;
+                flex-grow: 1;
 
                 img{ width: 16px; height: 16px; }
 
@@ -1209,6 +1504,49 @@ export default {
                         align-items: center;
                         gap: 4px;
                         margin-right: 16px;
+                    }
+                }
+            }
+        }
+
+        .view-entry{
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+            gap: 24px;
+
+            .left{
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+
+                .sectionBox{
+                    &.boxtype3{
+                        .table{
+                            .tableHead:not(.noPadding){
+                                padding-left: 72px;
+                            }
+                        }
+                    }
+
+                    .sectionBoxHead{
+                        display: flex;
+                        align-items: center;
+                        gap: 24px;
+                        h5{ flex-grow: 1; }
+                    }
+
+                    .entryFields{
+                        display: grid;
+                        grid-template-columns: repeat(3, minmax(0, 1fr));
+                        gap: 24px;
+
+                        .asField{
+                            :deep(label){
+                                text-overflow: ellipsis;
+                                white-space: nowrap;
+                                overflow: hidden;
+                            }
+                        }
                     }
                 }
             }

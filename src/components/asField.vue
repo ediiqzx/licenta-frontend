@@ -5,6 +5,8 @@
         <input v-else-if="type == 'password'"   type="password"		:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
         <input v-else-if="type == 'text'"       type="text"			:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
         <input v-else-if="type == 'file'"       type="file"			:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
+        <input v-else-if="type == 'number'"     type="number"		:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
+        <input v-else-if="type == 'date'"       type="date"		    :placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
     </div>
 </template>
 
