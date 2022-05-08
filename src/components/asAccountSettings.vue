@@ -102,47 +102,13 @@ export default {
 
 <style lang="scss" scoped>
 .modal-overlay{
-    width: 100vw;
-    height: 100vh;
-    position: fixed;
-    top: 0;
-    left: 0;
-    background: var(--25-gray-75opc);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
     .modal-container{
-        background: var(--main-glass);
-        padding: 64px;
-        border-radius: 3px;
         width: 608px;
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-
-        h3{ color: var(--main); }
 
         form{
             display: flex;
             flex-direction: column;
             gap: 24px;
-
-            .formEnd{
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 24px;
-
-                > *{ flex-grow: 1; }
-
-                button{
-                    :deep(p){
-                        flex-grow: 1;
-                        text-align: left;
-                    }
-                }
-            }
         }
     }
 }

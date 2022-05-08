@@ -177,4 +177,62 @@ h5{  font-size: 16px; font-weight: 600; }
   }
 }
 
+.modal-overlay{
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: var(--25-gray-75opc);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .modal-container{
+        background: var(--main-glass);
+        padding: 64px;
+        border-radius: 3px;
+        width: calc(100vw - 256px);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+
+        h3{ color: var(--main); }
+
+        .modal-head{
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          img{
+            width: 20px;
+            opacity: 0.5;
+            transition: all 0.3s ease;
+            &:hover{ opacity: 1 !important; cursor: pointer; }
+          }
+        }
+
+        form{
+          .formEnd{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            width: 100%;
+            grid-column-start: 1;
+            grid-column-end: 4;
+
+            > *{ flex-grow: 1; }
+
+            button{
+              :deep(p){
+                flex-grow: 1;
+                text-align: left;
+              }
+            }
+          }
+        }
+    }
+}
+
 </style>

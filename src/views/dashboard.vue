@@ -51,9 +51,9 @@
                     <template v-if="view == 'entry'"><img src="../assets/arrowRight-25gray-16.png"/><h5>{{ viewEntry.id }}</h5></template>
                 </div>
                 <template v-if="active_workspace.permissions.tables_access[viewTable.name] < 3">
-                    <asButton bttnType="secondary" label="Add New Entry" icon="plus-white-16.png" v-if="view == 'table'"/>
+                    <asButton bttnType="secondary" label="Add New Entry" icon="plus-white-16.png" v-if="view == 'table'" @click="addNewEntry(this.viewTable.name)"/>
                     <asButton bttnType="secondary" label="Edit Entry" icon="edit-white-16.png" v-if="view == 'entry'"/>
-                    <asButton bttnType="secondary" label="Delete Entry" icon="delete-white-16.png" v-if="view == 'entry'"/>
+                    <asButton bttnType="secondary" label="Delete Entry" icon="delete-white-16.png" v-if="view == 'entry'" @click="deleteEntry(this.viewEntry.id, this.viewTable.name)"/>
                 </template>
             </div>
             <div v-if="view == 'dashboard'" class="view-dashboard">
@@ -369,13 +369,13 @@
                     <div v-if="viewEntry.structure[viewTable.name].mainRelation" class="sectionBox boxtype2">
                         <div class="sectionBoxHead">
                             <h5>{{ viewEntry.structure[viewTable.name].singular }}'s {{ viewEntry.structure[viewTable.name].mainRelation.table }}</h5>
-                            <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 4" bttnType="third" :label="'See ' + viewEntry.structure[viewTable.name].mainRelation.table + ' entry'" icon="see-25gray-16.png" @click="seeEntry(1, viewEntry.structure[viewTable.name].mainRelation.table + 's')"/>
+                            <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 4" bttnType="third" :label="'See ' + viewEntry.structure[viewTable.name].mainRelation.table + ' entry'" icon="see-25gray-16.png" @click="seeEntry(viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.id, viewEntry.structure[viewTable.name].mainRelation.table + 's')"/>
                         </div>
                         <div class="as-separator"></div>
                         <div class="entryFields">
                             <template v-for="item in viewEntry.structure[viewTable.name].mainRelation.fields" v-if="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table] != null">
                                 <asField v-if="item.type == 'toggle'" background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.attributes[item.name] == true ? 'Yes' : 'No'" placeholder="No data here" required disabled/>
-                                <asField v-if="item.type == 'currency'" background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.attributes[item.name] + ' EUR'" placeholder="No data here" required disabled/>
+                                <asField v-else-if="item.type == 'currency'" background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.attributes[item.name] + ' EUR'" placeholder="No data here" required disabled/>
                                 <asField v-else-if="item.name == 'id'" background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.id" placeholder="No data here" required disabled/>
                                 <asField v-else background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.attributes[item.name]" placeholder="No data here" required disabled/>
                             </template>
@@ -384,7 +384,8 @@
                     <div v-for="item in viewEntry.structure[viewTable.name].otherRelations" class="sectionBox boxtype3">
                         <div class="sectionBoxHead">
                             <h5>{{ viewEntry.structure[viewTable.name].singular }}'s {{ item.table }}(s)</h5>
-                            <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 3" bttnType="third" :label="'Add new ' + item.table" icon="plus-25gray-16.png" @click=""/>
+                            <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 3 && !item.prefill" bttnType="third" :label="'Add new ' + item.table" icon="plus-25gray-16.png" @click="addNewEntry(item.table + 's')"/>
+                            <asButton v-else-if="active_workspace.permissions.tables_access[viewTable.name] < 3 && item.prefill" bttnType="third" :label="'Add new ' + item.table" icon="plus-25gray-16.png" @click="addNewEntry(item.table + 's', item.prefill, viewEntry.id)"/>
                         </div>
                         <div class="table">
                             <div class="tableHead" :class="{ 'noPadding' : item.special }">
@@ -417,6 +418,46 @@
         </div>
     </div>
     <asAccountSettings v-if="accountSettings" @closeAccountSettings="accountSettings = false"/>
+    <div class="modal-overlay" id="addNewEntry" v-if="newEntry.visible">
+        <div class="modal-container">
+            <div class="modal-head">
+                <h3><span class="tableTitle">{{ newEntry.table }}</span> - Add new entry</h3>
+                <img src="../assets/close-main-20.png" @click="addNewEntry('close')"/>
+            </div>
+            <div class="as-separator"></div>
+            <form v-on:submit.prevent="submitNewEntry(newEntry.table)" :class="{ 'loading' : newEntry.loading }">
+                <template v-for="item in newEntry.structure[newEntry.table]">
+                    <div class="asField" v-if="item.type == 'toggle'">
+                        <label>{{ item.label }}<span style="color: var(--accent)"> (optional)</span></label>
+                        <select :name="item.name">
+                            <option value="false">No</option>
+                            <option value="true">Yes</option>
+                        </select>
+                    </div><div class="asField" v-else-if="item.type == 'select'">
+                        <label>{{ item.label }}<span style="color: var(--accent)"> *</span></label>
+                        <select :name="item.name">
+                            <option v-for="option in item.options" :value="option">{{ option }}</option>
+                        </select>
+                    </div><div class="asField" v-else-if="item.type == 'relation'">
+                        <label>{{ item.label }}<span style="color: var(--accent)"> *</span></label>
+                        <select :name="item.name">
+                            <option v-for="item in newEntry.mainRelationOptions" :value="item.id">{{ item.name }}</option>
+                        </select>
+                    </div>
+                    <asField v-else-if="item.name == 'client_cui'" @change="getDataFromCUI()" :label="item.label" :type="item.type" :placeholder="item.label" :name="item.name" :required="item.required"/>
+                    <asField v-else :label="item.label" :type="item.type" :placeholder="item.label" :name="item.name" :required="item.required" :min="item.type == 'number' ? 0.01 : 0" :step="item.type == 'number' ? 0.01 : 1"/>
+                </template>
+                <div class="as-separator"></div>
+                <div class="formEnd">
+                    <template v-if="newEntry.loading == false">
+                        <asButton bttnType="secondary" label="Cancel" icon="block-white-16.png" @click="addNewEntry('close')"/>
+                        <asButton bttnType="main" label="Save" icon="save-white-16.png"/>
+                    </template>
+                    <asButton v-else bttnType="loading" label="Please wait..." icon="loading.gif" disabled/>
+                </div>
+            </form>
+        </div>
+    </div>
 </template>
 
 <script>
@@ -525,6 +566,52 @@ export default {
                     },
                 }
             },
+            newEntry: {
+                visible: false,
+                loading: false,
+                table: null,
+                mainRelationOptions: [],
+                structure: {
+                    clients: [
+                        { type: 'number',   name: 'client_cui',                         label: 'Client CUI',                    required: true },
+                        { type: 'text',     name: 'client_name',                        label: 'Client name',                   required: true },
+                        { type: 'text',     name: 'client_trade_register_number',       label: 'Client trade register number',  required: true },
+                        { type: 'text',     name: 'client_address',                     label: 'Client address',                required: true },
+                        { type: 'text',     name: 'client_iban',                        label: 'Client IBAN',                   required: false },
+                        { type: 'toggle',   name: 'client_vat_payer',                   label: 'Client VAT payer',              required: true },
+                        { type: 'text',     name: 'client_contact_person.person_name',  label: 'Client contact name',           required: false },
+                        { type: 'email',    name: 'client_contact_person.person_email', label: 'Client contact email',          required: false },
+                        { type: 'text',     name: 'client_contact_person.person_phone', label: 'Client contact phone',          required: false },
+                    ],
+                    contracts: [
+                        { type: 'date',     name: 'contract_date',                      label: 'Contract date',                 required: true },
+                        { type: 'select',   name: 'contract_status',                    label: 'Contract status',               required: true, options: ['Draft', 'Active', 'Inactive'] },
+                        { type: 'relation', name: 'contract_client',                    label: 'Contract client',               required: true },
+                    ],
+                    projects: [
+                        { type: 'text',     name: 'project_name',                       label: 'Project name',                  required: true },
+                        { type: 'select',   name: 'project_status',                     label: 'Project status',                required: true, options: ['Planned', 'In-progress', 'Done'] },
+                        { type: 'date',     name: 'project_deadline',                   label: 'Project deadline',              required: true },
+                        { type: 'number',   name: 'project_value',                      label: 'Project value (in EUR)',        required: true },
+                        { type: 'relation', name: 'project_contract',                   label: 'Project contract',              required: true },
+                    ],
+                    employees: [
+                        { type: 'text',     name: 'employee_name',                      label: 'Employee name',                 required: true },
+                        { type: 'number',   name: 'employee_cnp',                       label: 'Employee CNP',                  required: true },
+                    ],
+                    invoices: [
+                        { type: 'date',     name: 'invoice_issue_date',                 label: 'Invoice issue date',            required: true },
+                        { type: 'date',     name: 'invoice_due_date',                   label: 'Invoice due date',              required: true },
+                        { type: 'relation', name: 'invoice_project',                    label: 'Project',                       required: true },
+                    ],
+                    products: [
+                        { type: 'text',     name: 'product_name',                      label: 'Product name',                   required: true },
+                        { type: 'text',     name: 'product_description',               label: 'Product description',            required: false },
+                        { type: 'text',     name: 'product_quantity_unit',             label: 'Product measuring unit',         required: true },
+                        { type: 'number',   name: 'product_unit_value',                label: 'Product unit value (in EUR)',    required: true },
+                    ],
+                }
+            },
             viewEntry: {
                 id: null,
                 structure: {
@@ -534,7 +621,7 @@ export default {
                         fields: [
                             { name: 'client_cui', label: 'Client CUI', type: 'number', required: true, },
                             { name: 'client_name', label: 'Client name', type: 'text', required: true, },
-                            { name: 'client_trade_register_number', label: 'Client trade register number', type: 'text', },
+                            { name: 'client_trade_register_number', label: 'Client trade register number', type: 'text', required: true },
                             { name: 'client_address', label: 'Client address', type: 'text', required: true, },
                             { name: 'client_iban', label: 'Client IBAN', type: 'text', },
                             { name: 'client_vat_payer', label: 'Client VAT payer', type: 'toggle', required: true, },
@@ -545,6 +632,7 @@ export default {
                         otherRelations: [
                             {
                                 table: 'contract',
+                                prefill: 'contract_client',
                                 fields: [
                                     { name: 'id', label: 'Contract number', type: 'disabled' },
                                     { name: 'contract_date', label: 'Contract date', type: 'date' },
@@ -575,6 +663,7 @@ export default {
                         otherRelations: [
                             {
                                 table: 'project',
+                                prefill: 'project_contract',
                                 fields: [
                                     { name: 'project_name', label: 'Project name', type: 'text', },
                                     { name: 'project_status', label: 'Project status', type: 'dropdown', },
@@ -604,6 +693,7 @@ export default {
                         otherRelations: [
                             {
                                 table: 'invoice',
+                                prefill: 'invoice_project',
                                 fields: [
                                     { name: 'id', label: 'Invoice number', type: 'disabled', },
                                     { name: 'invoice_issue_date', label: 'Issue date', type: 'date', },
@@ -616,6 +706,7 @@ export default {
                             {
                                 table: 'task',
                                 special: true,
+                                prefill: 'task_project',
                                 fields: [
                                     { name: 'task_description', label: 'Task description', type: 'text', },
                                     { name: 'task_deadline', label: 'Deadline', type: 'date', },
@@ -636,6 +727,7 @@ export default {
                             {
                                 table: 'task',
                                 special: true,
+                                prefill: 'task_employee',
                                 fields: [
                                     { name: 'task_description', label: 'Task description', type: 'text', },
                                     { name: 'task_deadline', label: 'Deadline', type: 'date', },
@@ -650,7 +742,7 @@ export default {
                         fields: [
                             { name: 'id', label: 'Invoice number', type: 'disabled', required: true, },
                             { name: 'invoice_issue_date', label: 'Issue date', type: 'date', required: true, },
-                            { name: 'invoice_due_date', label: 'Due date', type: 'date', },
+                            { name: 'invoice_due_date', label: 'Due date', type: 'date', required: true, },
                             { name: 'invoice_total', label: 'Invoice total', type: 'currency', required: true, },
                             { name: 'invoice_paid', label: 'Invoice paid', type: 'toggle', },
                             { name: 'invoice_paid_date', label: 'Paid date', type: 'date', },
@@ -668,6 +760,7 @@ export default {
                             {
                                 table: 'item',
                                 special: true,
+                                prefill: 'item_invoice',
                                 fields: [
                                     { name: 'item_product', name2: 'product_name', label: 'Product name', type: 'text', composed: true },
                                     { name: 'item_quantity',label: 'Quantity', type: 'number' },
@@ -1351,7 +1444,7 @@ export default {
                 // Declarare populateValue
                 var populateValue = 'populate=*'
                 if (this.viewTable.name == 'invoices') populateValue = "populate[invoice_project]=*" + "&populate[invoice_items][populate][0]=item_product"
-                else if (this.viewTable.name == 'projects') populateValue = "populate[project_invoices]=*" + "&populate[project_tasks][populate][0]=task_employee"
+                else if (this.viewTable.name == 'projects') populateValue = "populate[project_invoices]=*" + "&populate[project_contract]=*" + "&populate[project_tasks][populate][0]=task_employee"
 
                 // Preluare date
                 await axios.get(this.apiURL + 'table-' + this.viewTable.name + '/' + entryID + '/?' + populateValue, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
@@ -1360,6 +1453,149 @@ export default {
                     // Preluare date despre entry
                     this.viewEntry.content = response.data.data.attributes
                     this.viewEntry.content.id = response.data.data.id
+                }).catch((error) => {
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
+
+                    // Daca a expirat token-ul
+                    if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                        alert("Your session expired, please login again!")
+                        this.logout()
+                    } else alert(error.response.data.error.message)
+                })
+            }
+        },
+        async addNewEntry(tableName, prefillField, prefillValue){
+            console.log("Method: addNewEntry(" + tableName + ", " + prefillField + ", " + prefillValue + ")")
+
+            if (tableName == "close"){
+                this.newEntry.visible = false
+            } else {
+                // Actualizare view
+                this.newEntry.visible = true
+                this.newEntry.loading = false
+                this.newEntry.table = tableName
+                this.newEntry.mainRelationOptions = []
+
+                // Preluare optiuni pentru mainRelation
+                let relationTable = {
+                    contracts:  { table: "clients",     field: "client_name" },
+                    projects:   { table: "contracts",   field: "id" },
+                    invoices:   { table: "projects",    field: "project_name" },
+                }
+                if (relationTable[tableName]) await axios.get(this.apiURL + 'table-' + relationTable[tableName].table, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
+                    console.log("response: ", response)
+                    for (let index in response.data.data){
+                        let item = response.data.data[index]
+                        let thename = null
+                        if (relationTable[tableName].field == "id") thename = item.id
+                        else thename = item.attributes[relationTable[tableName].field]
+                        this.newEntry.mainRelationOptions.push({
+                            id: item.id,
+                            name: thename
+                        })
+                    }
+
+                    // Prepopulare
+                    if (prefillField){
+                        document.querySelector("#addNewEntry [name='" + prefillField + "']").value = prefillValue
+                        console.log("test: ", document.querySelector("#addNewEntry [name='" + prefillField + "']"))
+                        console.log("test2: ", document.querySelector("#addNewEntry [name='" + prefillField + "']").value)
+                        console.log("prefillValue: ", prefillValue)
+                        console.log("prefillField: ", prefillField)
+                    }
+                }).catch((error) => {
+                    console.log("error: ", error)
+                    console.log("error.response: ", error.response)
+
+                    // Daca a expirat token-ul
+                    if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                        alert("Your session expired, please login again!")
+                        this.logout()
+                    } else alert(error.response.data.error.message)
+                })
+            }
+        },
+        async submitNewEntry(tableName){
+            console.log("Method: submitNewEntry(" + tableName + ")")
+
+            // Actualizare view
+            this.newEntry.loading = true
+
+            // Generare date
+            let requestData = { data: {} }
+            for (let index in this.newEntry.structure[tableName]){
+                let field = this.newEntry.structure[tableName][index]
+                let substrings = field.name.split(".")
+                if (substrings.length == 2) {
+                    if (!requestData.data[substrings[0]]) requestData.data[substrings[0]] = {}
+                    requestData.data[substrings[0]][substrings[1]] = document.querySelector("[name='" + field.name + "']").value
+                } else requestData.data[field.name] = document.querySelector("[name='" + field.name + "']").value
+            }
+            requestData.data.workspace = this.active_workspace.id
+            console.log("requestData: ", requestData)
+
+            // Trimitere request
+            await axios.post(this.apiURL + 'table-' + tableName, requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
+                console.log("response: ", response)
+
+                // Actualizare view
+                this.newEntry.loading = false
+                this.newEntry.visible = false
+                this.seeEntry(response.data.data.id, tableName)
+            }).catch((error) => {
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
+
+                // Actualizare view
+                this.newEntry.loading = false
+
+                // Daca a expirat token-ul
+                if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                    alert("Your session expired, please login again!")
+                    this.logout()
+                } else alert(error.response.data.error.message)
+            })
+        },
+        async getDataFromCUI(){
+            console.log("Method: getDataFromCUI()")
+
+            // Actualizare view
+            this.newEntry.loading = true
+
+            // Preluare date despre CUI
+            let cui = document.querySelector("input[name='client_cui']").value
+            await axios.get('https://infocui.ro/system/api/data?key=d9a54918586aed1776d09700dbf21b6c5806cb3b&cui=' + cui).then(async (response) => {
+                console.log("response: ", response)
+
+                // Actualizare date
+                if (response.data.status == 200){
+                    let data = response.data.data
+                    document.querySelector("input[name='client_name']").value = data.nume
+                    document.querySelector("input[name='client_trade_register_number']").value = data.cod_inmatriculare
+                    document.querySelector("input[name='client_address']").value = data.adresa
+                    document.querySelector("select[name='client_vat_payer']").value = data.tva == 'NU' ? false : true
+                    document.querySelector("input[name='client_contact_person.person_phone']").value = data.tel
+                }
+
+                // Actualizare view
+                this.newEntry.loading = false
+            }).catch((error) => {
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
+            })
+        },
+        async deleteEntry(entryID, tableName){
+            console.log("Method: seeEntry(" + entryID + ", " + tableName + ")")
+
+            // Modal confirmare
+            let confirmAction = confirm("Are you sure you want to remove this entry? You won't be able to retrive it back!")
+            if (confirmAction){
+                await axios.delete(this.apiURL + 'table-' + tableName + '/' + entryID, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
+                    console.log("response: ", response)
+
+                    // Actualizare view
+                    this.changeTableView(tableName)
                 }).catch((error) => {
                     console.log("error: ", error)
                     console.log("error.response: ", error.response)
@@ -1753,6 +1989,52 @@ export default {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+#addNewEntry{
+    .modal-container{
+        h3{
+            span.tableTitle{
+                font-weight: 700;
+                text-transform: capitalize;
+            }
+        }
+        form{
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 24px;
+
+            &.loading{
+                pointer-events: none;
+                filter: grayscale(1);
+                opacity: 0.5;
+            }
+
+            .as-separator{
+                grid-column-start: 1;
+                grid-column-end: 4;
+            }
+
+            .asField{
+                display: flex;
+                flex-direction: column;
+
+                label{
+                    font-size: 14px;
+                    font-weight: 600;
+                    margin-bottom: 4px;
+                    color: var(--25-gray);
+                }
+
+                select{
+                    font-family: 'Poppins', sans-serif;
+                    font-size: 14px;
+                    border-radius: 3px;
+                    padding: 12px 24px;
+                    text-transform: capitalize;
                 }
             }
         }
