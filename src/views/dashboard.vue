@@ -84,7 +84,7 @@
                 </template>
             </div>
             <div v-if="view == 'workspaceSettings'" class="view-workspaceSettings" :class="{ 'loading' : workspace_settings.loading }">
-                <div class="sectionBox sb-workspacesettings">
+                <div class="sectionBox sb-workspacesettings" v-if="active_workspace.permissions.manage_tables">
                     <div class="sectionBoxHead">
                         <h5>Workspace Settings</h5>
                         <asButton bttnType="main" label="Save changes" icon="save-white-16.png" @click="saveWorkspaceSettings()"/>
@@ -93,10 +93,10 @@
                     <template v-if="user.workspaces[active_workspace.id].role == 'owner'">
                         <div class="row">
                             <asField label="Change workspace name" icon="folder-main-16.png" type="text" placeholder="Choose a short and friendly name" name="workspace_settings_name" v-model="workspace_settings.data.name" required/>
-                            <div class="unlock-all-entries">
+                            <!-- <div class="unlock-all-entries">
                                 <p>Did an entry blocked?</p>
                                 <asButton bttnType="secondary" label="Unlock all entries" icon="unlock-white-16.png" disabled/>
-                            </div>
+                            </div> -->
                         </div>
                         <div class="as-separator"></div>
                     </template>
@@ -366,7 +366,7 @@
                             </template>
                         </div>
                     </div>
-                    <div v-if="viewEntry.structure[viewTable.name].mainRelation" class="sectionBox boxtype2">
+                    <div v-if="viewEntry.structure[viewTable.name].mainRelation && active_workspace.permissions.tables_access[viewEntry.structure[viewTable.name].mainRelation.table + 's'] < 4" class="sectionBox boxtype2">
                         <div class="sectionBoxHead">
                             <h5>{{ viewEntry.structure[viewTable.name].singular }}'s {{ viewEntry.structure[viewTable.name].mainRelation.table }}</h5>
                             <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 4" bttnType="third" :label="'See ' + viewEntry.structure[viewTable.name].mainRelation.table + ' entry'" icon="see-25gray-16.png" @click="seeEntry(viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.id, viewEntry.structure[viewTable.name].mainRelation.table + 's')"/>
@@ -381,38 +381,57 @@
                             </template>
                         </div>
                     </div>
-                    <div v-for="item in viewEntry.structure[viewTable.name].otherRelations" class="sectionBox boxtype3">
-                        <div class="sectionBoxHead">
-                            <h5>{{ viewEntry.structure[viewTable.name].singular }}'s {{ item.table }}(s)</h5>
-                            <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 3 && !item.prefill" bttnType="third" :label="'Add new ' + item.table" icon="plus-25gray-16.png" @click="addNewEntry(item.table + 's')"/>
-                            <asButton v-else-if="active_workspace.permissions.tables_access[viewTable.name] < 3 && item.prefill" bttnType="third" :label="'Add new ' + item.table" icon="plus-25gray-16.png" @click="addNewEntry(item.table + 's', item.prefill, viewEntry.id)"/>
-                        </div>
-                        <div class="table">
-                            <div class="tableHead" :class="{ 'noPadding' : item.special }">
-                               <p v-for="field in item.fields" class="tableHeadItem grow">{{ field.label }}</p>
+                    <template v-for="item in viewEntry.structure[viewTable.name].otherRelations">
+                        <div v-if="active_workspace.permissions.tables_access[item.table + 's'] < 4" class="sectionBox boxtype3">
+                            <div class="sectionBoxHead">
+                                <h5>{{ viewEntry.structure[viewTable.name].singular }}'s {{ item.table }}(s)</h5>
+                                <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 3 && !item.prefill" bttnType="third" :label="'Add new ' + item.table" icon="plus-25gray-16.png" @click="addNewEntry(item.table + 's')"/>
+                                <asButton v-else-if="active_workspace.permissions.tables_access[viewTable.name] < 3 && item.prefill" bttnType="third" :label="'Add new ' + item.table" icon="plus-25gray-16.png" @click="addNewEntry(item.table + 's', item.prefill, viewEntry.id)"/>
                             </div>
-                            <div class="tableRows" v-if="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + item.table + 's']">
-                                <div v-for="subitem in viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + item.table + 's'].data" class="tableRow">  
-                                    <div class="rowButtons" v-if="!item.special">
-                                        <img src="../assets/icBttn-mainGlass-25gray-see.png" @click="seeEntry(subitem.id, item.table + 's')">
-                                    </div>
-                                    <template v-for="field in item.fields">
-                                        <template v-if="field.composed">
-                                            <!-- {{ subitem.attributes }} -->
-                                            <p class="grow">{{ subitem.attributes[field.name].data.attributes[field.name2] }}<template v-if="field.type == 'currency'"> EUR</template></p>
-                                        </template><template v-else>
-                                            <p v-if="field.name == 'id'" class="grow">{{ subitem.id }}</p>
-                                            <p v-else-if="field.type == 'toggle'" class="grow">{{ subitem.attributes[field.name] == true ? 'Yes' : 'No' }}</p>
-                                            <p v-else class="grow">{{ subitem.attributes[field.name] }}<template v-if="field.type == 'currency'"> EUR</template></p>
+                            <div class="table">
+                                <div class="tableHead" :class="{ 'noPadding' : item.special }">
+                                <p v-for="field in item.fields" class="tableHeadItem grow">{{ field.label }}</p>
+                                </div>
+                                <div class="tableRows" v-if="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + item.table + 's']">
+                                    <div v-for="subitem in viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + item.table + 's'].data" class="tableRow">  
+                                        <div class="rowButtons" v-if="!item.special">
+                                            <img src="../assets/icBttn-mainGlass-25gray-see.png" @click="seeEntry(subitem.id, item.table + 's')">
+                                        </div>
+                                        <template v-for="field in item.fields">
+                                            <template v-if="field.composed">
+                                                <!-- {{ subitem.attributes }} -->
+                                                <p class="grow">{{ subitem.attributes[field.name].data.attributes[field.name2] }}<template v-if="field.type == 'currency'"> EUR</template></p>
+                                            </template><template v-else>
+                                                <p v-if="field.name == 'id'" class="grow">{{ subitem.id }}</p>
+                                                <p v-else-if="field.type == 'toggle'" class="grow">{{ subitem.attributes[field.name] == true ? 'Yes' : 'No' }}</p>
+                                                <p v-else class="grow">{{ subitem.attributes[field.name] }}<template v-if="field.type == 'currency'"> EUR</template></p>
+                                            </template>
                                         </template>
-                                    </template>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </template>
                 </div>
                 <div class="right">
-
+                    <div class="sectionBox">
+                        <h5>Entry discussions</h5>
+                        <div class="as-separator"></div>
+                        <div class="commentsList">
+                            <div v-if="viewEntry.content.discussions" v-for="item in viewEntry.content.discussions.slice().reverse()" class="commentBox" :class="{ 'personal' : item.comment_user.data.id == user.id }">
+                                <div class="commentTop">
+                                    <p>{{ item.comment_user.data.attributes.display_name }}</p>
+                                    <p>{{ new Date(item.comment_date).toLocaleString().slice(0, -3) }}</p>
+                                </div>
+                                <p>{{ item.comment_text }}</p>
+                            </div>
+                        </div>
+                        <div class="as-separator"></div>
+                        <form class="leaveComment" v-on:submit.prevent="submitComment()">
+                            <asField type="text" name="commentText" label="Leave a comment" placeholder="What's your message?" required/>
+                            <asButton bttnType="main" icon="arrowRight-white-16.png" label="Submit comment"/>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1402,8 +1421,10 @@ export default {
                                     if (value.replace(/[^[]/g, "").length > 1){
                                         let mainitem = value.substr(0, value.indexOf('['))
                                         if (!this.viewTable.content[item.id][mainitem]) this.viewTable.content[item.id][mainitem] = {}
-                                        if (subitem == "id") this.viewTable.content[item.id][mainitem][subitem] = item.attributes[mainitem].data.id
-                                        else this.viewTable.content[item.id][mainitem][subitem] = item.attributes[mainitem].data.attributes[subitem]
+                                        if (subitem == "id" && item.attributes[mainitem].data) this.viewTable.content[item.id][mainitem][subitem] = item.attributes[mainitem].data.id
+                                        else if (subitem == "id") this.viewTable.content[item.id][mainitem][subitem] = "-"
+                                        else if (item.attributes[mainitem].data) this.viewTable.content[item.id][mainitem][subitem] = item.attributes[mainitem].data.attributes[subitem]
+                                        else this.viewTable.content[item.id][mainitem][subitem] = "-"
                                     } else {
                                         let mainitem = value.substr(0, value.indexOf('['))
                                         if (!this.viewTable.content[item.id][mainitem]) this.viewTable.content[item.id][mainitem] = {}
@@ -1442,9 +1463,12 @@ export default {
                 this.viewEntry.content = {}
 
                 // Declarare populateValue
-                var populateValue = 'populate=*'
-                if (this.viewTable.name == 'invoices') populateValue = "populate[invoice_project]=*" + "&populate[invoice_items][populate][0]=item_product"
-                else if (this.viewTable.name == 'projects') populateValue = "populate[project_invoices]=*" + "&populate[project_contract]=*" + "&populate[project_tasks][populate][0]=task_employee"
+                var populateValue = 'populate[discussions][populate][0]=comment_user'
+                if (this.viewTable.name == 'clients') populateValue = "populate[discussions][populate][0]=comment_user&populate[client_contracts]=*"
+                if (this.viewTable.name == 'contracts') populateValue = "populate[discussions][populate][0]=comment_user&populate[contract_client]=*" + "&populate[contract_projects]=*"
+                else if (this.viewTable.name == 'projects') populateValue = "populate[discussions][populate][0]=comment_user&populate[project_invoices]=*" + "&populate[project_contract]=*" + "&populate[project_tasks][populate][0]=task_employee"
+                else if (this.viewTable.name == 'employees') populateValue = "populate[discussions][populate][0]=comment_user&populate[employee_tasks]=*"
+                else if (this.viewTable.name == 'invoices') populateValue = "populate[discussions][populate][0]=comment_user&populate[invoice_project]=*" + "&populate[invoice_items][populate][0]=item_product"
 
                 // Preluare date
                 await axios.get(this.apiURL + 'table-' + this.viewTable.name + '/' + entryID + '/?' + populateValue, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
@@ -1485,6 +1509,7 @@ export default {
                 }
                 if (relationTable[tableName]) await axios.get(this.apiURL + 'table-' + relationTable[tableName].table, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
                     console.log("response: ", response)
+
                     for (let index in response.data.data){
                         let item = response.data.data[index]
                         let thename = null
@@ -1497,13 +1522,11 @@ export default {
                     }
 
                     // Prepopulare
-                    if (prefillField){
+                    document.querySelector("#addNewEntry [name='" + prefillField + "']").setAttribute("disabled", true)
+                    setTimeout(function(){ if (prefillField){
                         document.querySelector("#addNewEntry [name='" + prefillField + "']").value = prefillValue
-                        console.log("test: ", document.querySelector("#addNewEntry [name='" + prefillField + "']"))
-                        console.log("test2: ", document.querySelector("#addNewEntry [name='" + prefillField + "']").value)
-                        console.log("prefillValue: ", prefillValue)
-                        console.log("prefillField: ", prefillField)
-                    }
+                        document.querySelector("#addNewEntry [name='" + prefillField + "']").removeAttribute("disabled")
+                    } }, 500)
                 }).catch((error) => {
                     console.log("error: ", error)
                     console.log("error.response: ", error.response)
@@ -1533,6 +1556,7 @@ export default {
                 } else requestData.data[field.name] = document.querySelector("[name='" + field.name + "']").value
             }
             requestData.data.workspace = this.active_workspace.id
+            requestData.data.discussions = [ { comment_text: "Entry was created.", comment_date: new Date().toISOString(), comment_user: this.user.id } ]
             console.log("requestData: ", requestData)
 
             // Trimitere request
@@ -1607,6 +1631,36 @@ export default {
                     } else alert(error.response.data.error.message)
                 })
             }
+        },
+        async submitComment(){
+            console.log("Method: submitComment()")
+
+            // Declarare requestData
+            var requestData = {
+                entry_id: this.viewEntry.id,
+                entry_table: this.viewTable.name,
+                comment_object: {
+                    comment_text: document.querySelector("[name='commentText']").value,
+                    comment_date: new Date().toISOString(),
+                    comment_user: this.user.id
+                }
+            }
+
+            // Submit comentariu
+            await axios.post(this.apiURL + 'workspaces/addComment/', requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
+                console.log("response: ", response)
+                this.seeEntry(this.viewEntry.id)
+                document.querySelector("[name='commentText']").value = ''
+            }).catch((error) => {
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
+
+                // Daca a expirat token-ul
+                if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                    alert("Your session expired, please login again!")
+                    this.logout()
+                } else alert(error.response.data.error.message)
+            })
         },
         manageRolesChanged(){
             if (this.manage_roles.new_role.manage_roles) this.manage_roles.new_role.manage_users = true
@@ -1786,6 +1840,69 @@ export default {
                     }
                 }
             }
+
+            .right{
+                display: flex;
+                position: sticky;
+                top: 24px;
+                height: calc(100vh - 117px);
+                .sectionBox{
+                    
+
+                    .commentsList{
+                        flex-grow: 1;
+                        height: 1px;
+                        overflow: scroll;
+                        display: flex;
+                        flex-direction: column-reverse;
+                        gap: 24px;
+
+                        .commentBox{
+                            display: flex;
+                            flex-direction: column;
+                            gap: 4px;
+
+                            &.personal{
+                                padding: 16px;
+                                background: var(--97-gray);
+                                .commentTop{
+                                    flex-direction: row-reverse;
+
+                                    p:first-child{ color: var(--accent); }
+                                }
+                            }
+
+                            .commentTop{
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+
+                                p:first-child{
+                                    font-weight: 600;
+                                    color: var(--main);
+                                }
+                                p:last-child{ color: var(--75-gray); }
+                            }
+                        }
+                    }
+
+                    .leaveComment{
+                        display: flex;
+                        flex-direction: column;
+
+                        :deep(input){ border-radius: 3px 3px 0 0; }
+
+                        button{
+                            border-radius: 0 0 3px 3px;
+
+                            :deep(p){
+                                flex-grow: 1;
+                                text-align: left;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         .view-table{
@@ -1837,7 +1954,7 @@ export default {
                 &.sb-workspacesettings{
                     .row{
                         display: grid;
-                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        grid-template-columns: repeat(1, minmax(0, 1fr));
                         align-items: end;
                         gap: 24px;
 
