@@ -382,7 +382,7 @@
                         </div>
                     </div>
                     <template v-for="item in viewEntry.structure[viewTable.name].otherRelations">
-                        <div v-if="active_workspace.permissions.tables_access[item.table + 's'] < 4" class="sectionBox boxtype3">
+                        <div v-if="item.table == 'task' || item.table == 'item' || active_workspace.permissions.tables_access[item.table + 's'] < 4" class="sectionBox boxtype3">
                             <div class="sectionBoxHead">
                                 <h5>{{ viewEntry.structure[viewTable.name].singular }}'s {{ item.table }}(s)</h5>
                                 <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 3 && !item.prefill" bttnType="third" :label="'Add new ' + item.table" icon="plus-25gray-16.png" @click="addNewEntry(item.table + 's')"/>
@@ -444,27 +444,29 @@
                 <img src="../assets/close-main-20.png" @click="addNewEntry('close')"/>
             </div>
             <div class="as-separator"></div>
-            <form v-on:submit.prevent="submitNewEntry(newEntry.table)" :class="{ 'loading' : newEntry.loading }">
+            <form v-on:submit.prevent="submitNewEntry(newEntry.table, newEntry.middleTable[newEntry.table])" :class="{ 'loading' : newEntry.loading }">
                 <template v-for="item in newEntry.structure[newEntry.table]">
-                    <div class="asField" v-if="item.type == 'toggle'">
-                        <label>{{ item.label }}<span style="color: var(--accent)"> (optional)</span></label>
-                        <select :name="item.name">
-                            <option value="false">No</option>
-                            <option value="true">Yes</option>
-                        </select>
-                    </div><div class="asField" v-else-if="item.type == 'select'">
-                        <label>{{ item.label }}<span style="color: var(--accent)"> *</span></label>
-                        <select :name="item.name">
-                            <option v-for="option in item.options" :value="option">{{ option }}</option>
-                        </select>
-                    </div><div class="asField" v-else-if="item.type == 'relation'">
-                        <label>{{ item.label }}<span style="color: var(--accent)"> *</span></label>
-                        <select :name="item.name">
-                            <option v-for="item in newEntry.mainRelationOptions" :value="item.id">{{ item.name }}</option>
-                        </select>
-                    </div>
-                    <asField v-else-if="item.name == 'client_cui'" @change="getDataFromCUI()" :label="item.label" :type="item.type" :placeholder="item.label" :name="item.name" :required="item.required"/>
-                    <asField v-else :label="item.label" :type="item.type" :placeholder="item.label" :name="item.name" :required="item.required" :min="item.type == 'number' ? 0.01 : 0" :step="item.type == 'number' ? 0.01 : 1"/>
+                    <template v-if="!item.ifTable || item.ifTable && item.ifTable == viewTable.name">
+                        <div class="asField" v-if="item.type == 'toggle'">
+                            <label>{{ item.label }}<span style="color: var(--accent)"> (optional)</span></label>
+                            <select :name="item.name">
+                                <option value="false">No</option>
+                                <option value="true">Yes</option>
+                            </select>
+                        </div><div class="asField" v-else-if="item.type == 'select'">
+                            <label>{{ item.label }}<span style="color: var(--accent)"> *</span></label>
+                            <select :name="item.name">
+                                <option v-for="option in item.options" :value="option">{{ option }}</option>
+                            </select>
+                        </div><div class="asField" v-else-if="item.type == 'relation'">
+                                <label>{{ item.label }}<span style="color: var(--accent)"> *</span></label>
+                                <select :name="item.name">
+                                    <option v-for="item in newEntry.mainRelationOptions" :value="item.id">{{ item.name }}</option>
+                                </select>
+                        </div>
+                        <asField v-else-if="item.name == 'client_cui'" @change="getDataFromCUI()" :label="item.label" :type="item.type" :placeholder="item.label" :name="item.name" :required="item.required"/>
+                        <asField v-else :label="item.label" :type="item.type" :placeholder="item.label" :name="item.name" :required="item.required" :min="item.type == 'number' ? 0.01 : 0" :step="item.type == 'number' ? 0.01 : 1"/>
+                    </template>
                 </template>
                 <div class="as-separator"></div>
                 <div class="formEnd">
@@ -491,6 +493,7 @@ export default {
 	components: { asField, asButton, asAccountSettings, Popper },
 	data(){
 		return{
+            redirect: false,
 			user: {
                 jwt: null,
                 id: null,
@@ -590,6 +593,10 @@ export default {
                 loading: false,
                 table: null,
                 mainRelationOptions: [],
+                middleTable:{
+                    tasks: "project-",
+                    items: "invoice-"
+                },
                 structure: {
                     clients: [
                         { type: 'number',   name: 'client_cui',                         label: 'Client CUI',                    required: true },
@@ -624,11 +631,21 @@ export default {
                         { type: 'relation', name: 'invoice_project',                    label: 'Project',                       required: true },
                     ],
                     products: [
-                        { type: 'text',     name: 'product_name',                      label: 'Product name',                   required: true },
-                        { type: 'text',     name: 'product_description',               label: 'Product description',            required: false },
-                        { type: 'text',     name: 'product_quantity_unit',             label: 'Product measuring unit',         required: true },
-                        { type: 'number',   name: 'product_unit_value',                label: 'Product unit value (in EUR)',    required: true },
+                        { type: 'text',     name: 'product_name',                       label: 'Product name',                  required: true },
+                        { type: 'text',     name: 'product_description',                label: 'Product description',           required: false },
+                        { type: 'text',     name: 'product_quantity_unit',              label: 'Product measuring unit',        required: true },
+                        { type: 'number',   name: 'product_unit_value',                 label: 'Product unit value (in EUR)',   required: true },
                     ],
+                    tasks: [
+                        { type: 'relation', name: 'task_employee',                      label: 'Assignee',                      required: true, ifTable: 'projects' },
+                        { type: 'relation', name: 'task_project',                       label: 'Project',                       required: true, ifTable: 'employees' },
+                        { type: 'text',     name: 'task_description',                   label: 'Task description',              required: true },
+                        { type: 'date',     name: 'task_deadline',                      label: 'Task deadline',                 required: true },
+                    ],
+                    items: [
+                        { type: 'relation', name: 'item_product',                       label: 'Product',                       required: true },
+                        { type: 'number',   name: 'item_quantity',                      label: 'Quantity',                      required: true },
+                    ]
                 }
             },
             viewEntry: {
@@ -725,7 +742,6 @@ export default {
                             {
                                 table: 'task',
                                 special: true,
-                                prefill: 'task_project',
                                 fields: [
                                     { name: 'task_description', label: 'Task description', type: 'text', },
                                     { name: 'task_deadline', label: 'Deadline', type: 'date', },
@@ -746,7 +762,6 @@ export default {
                             {
                                 table: 'task',
                                 special: true,
-                                prefill: 'task_employee',
                                 fields: [
                                     { name: 'task_description', label: 'Task description', type: 'text', },
                                     { name: 'task_deadline', label: 'Deadline', type: 'date', },
@@ -779,7 +794,6 @@ export default {
                             {
                                 table: 'item',
                                 special: true,
-                                prefill: 'item_invoice',
                                 fields: [
                                     { name: 'item_product', name2: 'product_name', label: 'Product name', type: 'text', composed: true },
                                     { name: 'item_quantity',label: 'Quantity', type: 'number' },
@@ -858,14 +872,24 @@ export default {
     },
 	async mounted() {
         console.log('\n', '\n', "===== MOUNTING... =====")
-        await this.fetchUser() // Preluare date user
-        await this.fetchPersonalWorkspace() // Preluare date workspace personal
+        // await this.fetchUser() // Preluare date user
+        // await this.fetchPersonalWorkspace() // Preluare date workspace personal
+
+        await this.fetchUser().then(async () => { // Preluare date user
+            if (!this.redirect) await this.fetchPersonalWorkspace().then(async () => { // Preluare date workspace personal
+                // Setare workspace default in router-view
+                if(this.$route.params.fromInvitation){
+                    console.log('Coming from an invitation registration')
+                    await this.changeWorkspace ( this.$route.params.fromInvitation )
+                } else await this.changeWorkspace( this.user.personal_workspace.id )
+            })
+        })
         
-        // Setare workspace default in router-view
-        if(this.$route.params.fromInvitation){
-            console.log('Coming from an invitation registration')
-            await this.changeWorkspace ( this.$route.params.fromInvitation )
-        } else await this.changeWorkspace( this.user.personal_workspace.id )
+        // // Setare workspace default in router-view
+        // if(this.$route.params.fromInvitation){
+        //     console.log('Coming from an invitation registration')
+        //     await this.changeWorkspace ( this.$route.params.fromInvitation )
+        // } else await this.changeWorkspace( this.user.personal_workspace.id )
     },
 	methods: {
         async fetchUser(){
@@ -911,6 +935,7 @@ export default {
             console.log("Method: logout()")
             this.$cookies.remove('allspace_user')
             this.$router.push({ name:'login' })
+            this.redirect = true
         },
         async fetchPersonalWorkspace(){
             console.log("Method: fetchPersonalWorkspace()")
@@ -1506,7 +1531,10 @@ export default {
                     contracts:  { table: "clients",     field: "client_name" },
                     projects:   { table: "contracts",   field: "id" },
                     invoices:   { table: "projects",    field: "project_name" },
+                    tasks:      { table: "employees",   field: "employee_name" },
+                    items:      { table: "products",    field: "product_name" },
                 }
+                if (this.viewTable.name == 'employees') relationTable.tasks = { table: "projects", field: "project_name" }
                 if (relationTable[tableName]) await axios.get(this.apiURL + 'table-' + relationTable[tableName].table, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
                     console.log("response: ", response)
 
@@ -1522,11 +1550,13 @@ export default {
                     }
 
                     // Prepopulare
-                    document.querySelector("#addNewEntry [name='" + prefillField + "']").setAttribute("disabled", true)
-                    setTimeout(function(){ if (prefillField){
-                        document.querySelector("#addNewEntry [name='" + prefillField + "']").value = prefillValue
-                        document.querySelector("#addNewEntry [name='" + prefillField + "']").removeAttribute("disabled")
-                    } }, 500)
+                    if (prefillField){
+                        document.querySelector("#addNewEntry [name='" + prefillField + "']").setAttribute("disabled", true)
+                        setTimeout(function(){
+                            document.querySelector("#addNewEntry [name='" + prefillField + "']").value = prefillValue
+                            document.querySelector("#addNewEntry [name='" + prefillField + "']").removeAttribute("disabled")
+                        }, 500)
+                    }
                 }).catch((error) => {
                     console.log("error: ", error)
                     console.log("error.response: ", error.response)
@@ -1539,8 +1569,8 @@ export default {
                 })
             }
         },
-        async submitNewEntry(tableName){
-            console.log("Method: submitNewEntry(" + tableName + ")")
+        async submitNewEntry(tableName, middleTable){
+            console.log("Method: submitNewEntry(" + tableName + ", " + middleTable + ")")
 
             // Actualizare view
             this.newEntry.loading = true
@@ -1549,24 +1579,32 @@ export default {
             let requestData = { data: {} }
             for (let index in this.newEntry.structure[tableName]){
                 let field = this.newEntry.structure[tableName][index]
-                let substrings = field.name.split(".")
-                if (substrings.length == 2) {
-                    if (!requestData.data[substrings[0]]) requestData.data[substrings[0]] = {}
-                    requestData.data[substrings[0]][substrings[1]] = document.querySelector("[name='" + field.name + "']").value
-                } else requestData.data[field.name] = document.querySelector("[name='" + field.name + "']").value
+                if (!field.ifTable || field.ifTable && field.ifTable == this.viewTable.name){
+                    let substrings = field.name.split(".")
+                    if (substrings.length == 2) {
+                        if (!requestData.data[substrings[0]]) requestData.data[substrings[0]] = {}
+                        requestData.data[substrings[0]][substrings[1]] = document.querySelector("[name='" + field.name + "']").value
+                    } else requestData.data[field.name] = document.querySelector("[name='" + field.name + "']").value
+                }
             }
             requestData.data.workspace = this.active_workspace.id
             requestData.data.discussions = [ { comment_text: "Entry was created.", comment_date: new Date().toISOString(), comment_user: this.user.id } ]
+            if (middleTable == 'project-' && this.viewTable.name == 'projects') requestData.data.task_project = this.viewEntry.id
+            else if (middleTable == 'project-' && this.viewTable.name == 'employees') requestData.data.task_employee = this.viewEntry.id
+            else if (middleTable == 'invoice-') requestData.data.item_invoice = this.viewEntry.id
             console.log("requestData: ", requestData)
 
             // Trimitere request
-            await axios.post(this.apiURL + 'table-' + tableName, requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
+            let requestLink = tableName
+            if (middleTable) requestLink = middleTable + requestLink
+            await axios.post(this.apiURL + 'table-' + requestLink, requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
                 console.log("response: ", response)
 
                 // Actualizare view
                 this.newEntry.loading = false
                 this.newEntry.visible = false
-                this.seeEntry(response.data.data.id, tableName)
+                if (middleTable) this.seeEntry(this.viewEntry.id, this.viewTable.name)
+                else this.seeEntry(response.data.data.id, tableName)
             }).catch((error) => {
                 console.log("error: ", error)
                 console.log("error.response: ", error.response)
@@ -1613,7 +1651,15 @@ export default {
             console.log("Method: seeEntry(" + entryID + ", " + tableName + ")")
 
             // Modal confirmare
-            let confirmAction = confirm("Are you sure you want to remove this entry? You won't be able to retrive it back!")
+            let text = "Are you sure you want to remove this entry? You won't be able to retrive it back!"
+            switch (tableName){
+                case "clients": text = text + "\n\nAll contracts, projects and invoices related to this client will also be deleted!"; break
+                case "contracts": text = text + "\n\nAll projects and invoices related to this contract will also be deleted!"; break
+                case "projects": text = text + "\n\nAll invoices related to this project will also be deleted!"; break
+                case "products": text = text + "\n\nThe product will also disappear from all invoices containing it!"; break
+                case "employees": text = text + "\n\nAll tasks of this employee will also disappear from the projects!"; break
+            }
+            let confirmAction = confirm(text)
             if (confirmAction){
                 await axios.delete(this.apiURL + 'table-' + tableName + '/' + entryID, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
                     console.log("response: ", response)
