@@ -52,7 +52,7 @@
                 </div>
                 <template v-if="active_workspace.permissions.tables_access[viewTable.name] < 3">
                     <asButton bttnType="secondary" label="Add New Entry" icon="plus-white-16.png" v-if="view == 'table'" @click="addNewEntry(this.viewTable.name)"/>
-                    <asButton bttnType="secondary" label="Edit Entry" icon="edit-white-16.png" v-if="view == 'entry'"/>
+                    <asButton bttnType="secondary" label="Edit Entry" icon="edit-white-16.png" v-if="view == 'entry'" @click="toggleEditEntry()"/>
                     <asButton bttnType="secondary" label="Delete Entry" icon="delete-white-16.png" v-if="view == 'entry'" @click="deleteEntry(this.viewEntry.id, this.viewTable.name)"/>
                 </template>
             </div>
@@ -369,7 +369,10 @@
                     <div v-if="viewEntry.structure[viewTable.name].mainRelation && active_workspace.permissions.tables_access[viewEntry.structure[viewTable.name].mainRelation.table + 's'] < 4" class="sectionBox boxtype2">
                         <div class="sectionBoxHead">
                             <h5>{{ viewEntry.structure[viewTable.name].singular }}'s {{ viewEntry.structure[viewTable.name].mainRelation.table }}</h5>
-                            <asButton v-if="active_workspace.permissions.tables_access[viewTable.name] < 4" bttnType="third" :label="'See ' + viewEntry.structure[viewTable.name].mainRelation.table + ' entry'" icon="see-25gray-16.png" @click="seeEntry(viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.id, viewEntry.structure[viewTable.name].mainRelation.table + 's')"/>
+                            <template v-if="active_workspace.permissions.tables_access[viewTable.name] < 4">
+                                <asButton bttnType="third" :label="'See ' + viewEntry.structure[viewTable.name].mainRelation.table + ' entry'" icon="see-25gray-16.png" @click="seeEntry(viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + viewEntry.structure[viewTable.name].mainRelation.table].data.id, viewEntry.structure[viewTable.name].mainRelation.table + 's')"/>
+                                <asButton bttnType="third" :label="'Change ' + viewEntry.structure[viewTable.name].mainRelation.table" icon="edit-25gray-16.png" @click="toggleEditField(viewEntry.structure[viewTable.name].singular + '_' + viewEntry.structure[viewTable.name].mainRelation.table)"/>
+                            </template>
                         </div>
                         <div class="as-separator"></div>
                         <div class="entryFields">
@@ -389,13 +392,15 @@
                                 <asButton v-else-if="active_workspace.permissions.tables_access[viewTable.name] < 3 && item.prefill" bttnType="third" :label="'Add new ' + item.table" icon="plus-25gray-16.png" @click="addNewEntry(item.table + 's', item.prefill, viewEntry.id)"/>
                             </div>
                             <div class="table">
-                                <div class="tableHead" :class="{ 'noPadding' : item.special }">
+                                <div class="tableHead">
                                 <p v-for="field in item.fields" class="tableHeadItem grow">{{ field.label }}</p>
                                 </div>
                                 <div class="tableRows" v-if="viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + item.table + 's']">
                                     <div v-for="subitem in viewEntry.content[viewEntry.structure[viewTable.name].singularandlower + '_' + item.table + 's'].data" class="tableRow">  
                                         <div class="rowButtons" v-if="!item.special">
                                             <img src="../assets/icBttn-mainGlass-25gray-see.png" @click="seeEntry(subitem.id, item.table + 's')">
+                                        </div><div class="rowButtons" v-else>
+                                            <img src="../assets/icBttn-mainGlass-25gray-delete.png" @click="deleteEntry(subitem.id, 'special')">
                                         </div>
                                         <template v-for="field in item.fields">
                                             <template v-if="field.composed">
@@ -403,7 +408,7 @@
                                                 <p class="grow">{{ subitem.attributes[field.name].data.attributes[field.name2] }}<template v-if="field.type == 'currency'"> EUR</template></p>
                                             </template><template v-else>
                                                 <p v-if="field.name == 'id'" class="grow">{{ subitem.id }}</p>
-                                                <p v-else-if="field.type == 'toggle'" class="grow">{{ subitem.attributes[field.name] == true ? 'Yes' : 'No' }}</p>
+                                                <p v-else-if="field.type == 'toggle'" class="grow toggle" @click="switchToggle(subitem.id, field.name, subitem.attributes[field.name])">{{ subitem.attributes[field.name] == true ? 'Yes' : 'No' }}</p>
                                                 <p v-else class="grow">{{ subitem.attributes[field.name] }}<template v-if="field.type == 'currency'"> EUR</template></p>
                                             </template>
                                         </template>
@@ -476,6 +481,18 @@
                     </template>
                     <asButton v-else bttnType="loading" label="Please wait..." icon="loading.gif" disabled/>
                 </div>
+            </form>
+        </div>
+    </div>
+    <div class="modal-overlay" id="editEntry" v-if="editEntry.visible">
+        <div class="modal-container">
+            <div class="modal-head">
+                <h3>Edit entry</h3>
+                <img src="../assets/close-main-20.png" @click="toggleEditEntry('close')"/>
+            </div>
+            <div class="as-separator"></div>
+            <form v-on:submit.prevent="submitEditEntry()">
+                
             </form>
         </div>
     </div>
@@ -647,6 +664,9 @@ export default {
                         { type: 'number',   name: 'item_quantity',                      label: 'Quantity',                      required: true },
                     ]
                 }
+            },
+            editEntry: {
+                visible: false
             },
             viewEntry: {
                 id: null,
@@ -992,7 +1012,7 @@ export default {
                         break
                     case "manager":
                         switch_toUpdate1 = ['view_dashboard', 'manage_roles', 'manage_users', 'manage_tables']
-                        toUpdswitch_toUpdate1ate1.forEach(item => this.active_workspace.permissions[item] = true)
+                        switch_toUpdate1.forEach(item => this.active_workspace.permissions[item] = true)
                         switch_toUpdate2 = ['clients', 'contracts', 'projects', 'employees', 'invoices', 'products']
                         switch_toUpdate2.forEach(item => this.active_workspace.permissions.tables_access[item] = 2)
                         break
@@ -1650,6 +1670,14 @@ export default {
         async deleteEntry(entryID, tableName){
             console.log("Method: seeEntry(" + entryID + ", " + tableName + ")")
 
+            // Definire request endpoint
+            var requestEndpoint = tableName
+            if (tableName == "special"){
+                console.log(this.viewTable.name, tableName)
+                if (this.viewTable.name == "invoices") requestEndpoint = "invoice-items"
+                else if (this.viewTable.name == "projects" || this.viewTable.name == "employees") requestEndpoint = "project-tasks"
+            }
+
             // Modal confirmare
             let text = "Are you sure you want to remove this entry? You won't be able to retrive it back!"
             switch (tableName){
@@ -1661,11 +1689,12 @@ export default {
             }
             let confirmAction = confirm(text)
             if (confirmAction){
-                await axios.delete(this.apiURL + 'table-' + tableName + '/' + entryID, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
+                await axios.delete(this.apiURL + 'table-' + requestEndpoint + '/' + entryID, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
                     console.log("response: ", response)
 
                     // Actualizare view
-                    this.changeTableView(tableName)
+                    if (tableName == "special") this.seeEntry(this.viewEntry.id)
+                    else this.changeTableView(tableName)
                 }).catch((error) => {
                     console.log("error: ", error)
                     console.log("error.response: ", error.response)
@@ -1707,6 +1736,46 @@ export default {
                     this.logout()
                 } else alert(error.response.data.error.message)
             })
+        },
+        async switchToggle(entryID, fieldName, currentValue){
+            console.log("Method: switchToggle(" + entryID + ", " + fieldName + ", " + currentValue + ")")
+
+            // Declarare requestData
+            let requestEndpoint = {
+                "task_done": "table-project-tasks/",
+                "invoice_paid": "table-invoices/"
+            }
+            let requestData = { data: {} }
+            requestData.data[fieldName] = !currentValue
+
+            // Actualizare switch
+            await axios.put(this.apiURL + requestEndpoint[fieldName] + entryID, requestData, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+                console.log("response: ", response)
+
+                // Actualizare view
+                this.seeEntry(this.viewEntry.id)
+            }).catch((error) => {
+                console.log("error: ", error)
+                console.log("error.response: ", error.response)
+
+                // Daca a expirat token-ul
+                if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+                    alert("Your session expired, please login again!")
+                    this.logout()
+                } else alert(error.response.data.error.message)
+            })
+        },
+        toggleEditEntry(action){
+            console.log("Method: togglEditEntry(" + action + ")")
+
+            if (action == "close") this.editEntry.visible = false
+            else this.editEntry.visible = true
+
+
+
+        },
+        toggleEditField(fieldName){
+            console.log("Method: toggleEditField(" + fieldName + ")")
         },
         manageRolesChanged(){
             if (this.manage_roles.new_role.manage_roles) this.manage_roles.new_role.manage_users = true
@@ -1860,6 +1929,19 @@ export default {
                         .table{
                             .tableHead:not(.noPadding){
                                 padding-left: 72px;
+                            }
+                            .tableRows{
+                                .tableRow{
+                                    .toggle{
+                                        cursor: pointer;
+                                        transition: all 0.3s ease;
+
+                                        &:hover{
+                                            color: var(--main);
+                                            font-weight: 600;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
