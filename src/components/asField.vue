@@ -1,6 +1,9 @@
 <template>
     <div class="asField">
-        <label v-if="!hideLabel">{{ label }}<span style="color: var(--accent)">{{ requiredMark }}</span></label>
+        <label v-if="!hideLabel">
+            <img v-if="editable" src="../assets/edit-25gray-16.png" @click="$emit('clicked')"/>
+            {{ label }}<span style="color: var(--accent)">{{ requiredMark }}</span>
+        </label>
         <input v-if="type == 'email'"           type="email"		:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
         <input v-else-if="type == 'password'"   type="password"		:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
         <input v-else-if="type == 'text'"       type="text"			:placeholder="placeholder" :minlength="minlength" :name="name" :value="modelValue" :required="required" :disabled="disabled" :class="{'with-icon': icon}" @input="$emit('update:modelValue', $event.target.value)" :style="style"/>
@@ -46,6 +49,10 @@ export default {
             type: Boolean,
             default: false,
         },
+        editable: {
+            type: Boolean,
+            default: false,
+        },
         background: {
             type: String,
             default: '#ffffff'
@@ -63,7 +70,7 @@ export default {
             default: 1
         },
     },
-    emits: ['update:modelValue'],
+    emits: ['update:modelValue', 'clicked'],
     data(){
         return{
 
@@ -96,6 +103,18 @@ export default {
             font-weight: 600;
             margin-bottom: 4px;
             color: var(--25-gray);
+            display: flex;
+            align-items: center;
+
+            img{
+                width: 16px;
+                height: 16px;
+                margin-right: 8px; 
+                opacity: 0.5;
+                transition: all 0.3s ease;
+                cursor: pointer;
+                &:hover{ opacity: 1; }
+            }
         }
 
         input{
