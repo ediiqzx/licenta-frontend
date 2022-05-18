@@ -1,5 +1,5 @@
 <template>
-    <button :class="'button as-button-' + bttnType" :type="form ? 'submit' : ''">
+    <button :class="'button as-button-' + bttnType" :type="form ? 'submit' : ''" :disabled="disabled">
         <img v-if="icon && iconPosition == 'left'" :src="icon"/>
         <p class="as-button-label">{{ label }}</p>
         <img v-if="icon && iconPosition == 'right'" :src="icon"/>
@@ -14,7 +14,8 @@ export default {
         label: { type: String, default: 'Button Label' },
         icon: { type: String, default: '' },
         iconPosition: { type: String, default: 'right' },
-        form: { type: String, default: '' }
+        form: { type: String, default: '' },
+        disabled: { type: Boolean, default: false },
     }
 }
 </script>

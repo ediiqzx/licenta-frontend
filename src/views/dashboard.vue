@@ -24,8 +24,8 @@
 				<template v-else>
 					<template v-for="(table, index) in ['clients', 'contracts', 'projects', 'employees', 'invoices', 'products']">
 						<template v-if="active_workspace.default_tables['default_tables_' + table] && active_workspace.permissions.tables_access[table] != 4">
-							<asButton v-if="view == 'table' && viewTable.name == table" bttnType="third" :label="table" icon="table-main-16.png" iconPosition="left" class="active"/>
-							<asButton v-else bttnType="third" :label="table" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView(table)"/>
+							<asButton v-if="view == 'table' && viewTable.name == table" bttnType="third" :label="table == 'products' ? 'Services' : table" icon="table-main-16.png" iconPosition="left" class="active"/>
+							<asButton v-else bttnType="third" :label="table == 'products' ? 'Services' : table" icon="table-25gray-16.png" iconPosition="left" @click="changeTableView(table)"/>
 						</template>
 					</template>
 					<!-- <asButton bttnType="third" label="Create new table" icon="plus-25gray-16.png" iconPosition="left" @click="newTableWizard()"/> -->
@@ -47,7 +47,7 @@
 						<h5 v-else>Dashboard</h5>
 					</template>
 					<h5 v-else-if="view == 'workspaceSettings'">Workspace Settings</h5>
-					<h5 v-else-if="view == 'table' || view == 'entry'">{{ viewTable.name }}</h5>
+					<h5 v-else-if="view == 'table' || view == 'entry'">{{ viewTable.name == 'products' ? 'services' : viewTable.name }}</h5>
 					<template v-if="view == 'entry'"><img src="../assets/arrowRight-25gray-16.png"/><h5>{{ viewEntry.id }}</h5></template>
 				</div>
 				<template v-if="active_workspace.permissions.tables_access[viewTable.name] < 3">
@@ -74,12 +74,36 @@
 									<label><input type="checkbox" name="defaultTables[]" value="default_tables_projects" v-model="active_workspace.default_tables.default_tables_projects"><p>Projects</p></label>
 									<label><input type="checkbox" name="defaultTables[]" value="default_tables_employees" v-model="active_workspace.default_tables.default_tables_employees"><p>Employees</p></label>
 									<label><input type="checkbox" name="defaultTables[]" value="default_tables_invoices" v-model="active_workspace.default_tables.default_tables_invoices"><p>Invoices</p></label>
-									<label><input type="checkbox" name="defaultTables[]" value="default_tables_products" v-model="active_workspace.default_tables.default_tables_products"><p>Products</p></label>
+									<label><input type="checkbox" name="defaultTables[]" value="default_tables_products" v-model="active_workspace.default_tables.default_tables_products"><p>Services</p></label>
 								</div>
 							</div>
 							<asButton bttnType="main" icon="arrowRight-white-16.png" label="Save Workspace" :disabled="setupFormReady"/>
 						</form>
 						<p v-else>This workspace is not configured yet. Contact the owner or choose another workspace from left menu.</p>
+					</template><template v-else>
+						<div class="row">
+							<div class="box" v-for="item in dashboard.stats">
+								<h5><span>{{ item.value }}</span> {{ item.label }}</h5>
+								<p>{{ item.description }}</p>
+							</div>
+						</div>
+						<div class="as-separator"></div>
+						<div class="greetingsBox">
+							<h4>Welcome to the newest member of '{{ active_workspace.name }}': {{ dashboard.newestMember }}! 🎉</h4>
+						</div>
+						<div class="as-separator"></div>
+						<div class="row">
+							<template v-for="item in dashboard.tables">
+								<div class="box" v-if="active_workspace.default_tables['default_tables_' + item[0]] && active_workspace.permissions.tables_access[item[0]] < 4" @click="changeTableView(item[0])">
+									<div class="top">
+										<img src="../assets/table-brand-16.png"/>
+										<h5>{{ item[0] }}</h5>
+										<p>{{ item[1] }} entries</p>
+									</div>
+									<asButton :disabled="active_workspace.permissions.tables_access[item[0]] > 2" bttnType="main" :label="'Add new ' + item[0].toLowerCase().slice(0, -1)" icon="plus-white-16.png" @click="addNewEntryFromDashboard(item[0])"/>
+								</div>
+							</template>
+						</div>
 					</template>
 				</template>
 			</div>
@@ -107,7 +131,7 @@
 						<label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_projects" v-model="workspace_settings.data.default_tables.default_tables_projects"><p>Projects</p></label>
 						<label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_employees" v-model="workspace_settings.data.default_tables.default_tables_employees"><p>Employees</p></label>
 						<label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_invoices" v-model="workspace_settings.data.default_tables.default_tables_invoices"><p>Invoices</p></label>
-						<label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_products" v-model="workspace_settings.data.default_tables.default_tables_products"><p>Products</p></label>
+						<label><input type="checkbox" name="workspace_settings_defaultTables[]" value="workspace_settings_default_tables_products" v-model="workspace_settings.data.default_tables.default_tables_products"><p>Services</p></label>
 					</div>
 				</div>
 				<div class="sectionBox sb-manageroles" v-if="active_workspace.permissions.manage_roles">
@@ -217,7 +241,7 @@
 										</select>
 									</div>
 									<div class="listItem" v-if="active_workspace.default_tables.default_tables_products">
-										<p>Products:</p>
+										<p>Services:</p>
 										<select name="newRole_accessTable_products" v-model.number="manage_roles.new_role.tables_access.products">
 											<option value="4">None</option><option value="3">Analyze</option><option value="2">Management</option>
 										</select>
@@ -297,7 +321,7 @@
 							<p v-for="(label, name) in viewTable.structure[viewTable.name]" class="tableHeadItem">{{ label }}</p>
 						</div>
 						<div class="tableRows">
-							<p v-if="viewTable.content.length == 0" class="table-no-content">There is no content inside this table.</p>
+							<p v-if="Object.keys(viewTable.content).length === 0" class="table-no-content">There is no content inside this table.</p>
 							<template v-else>
 								<div class="tableRow" v-for="(data, id) in viewTable.content" :key="id">
 									<div class="rowButtons">
@@ -353,6 +377,8 @@
 										<asField background="#F7F7F7" type="email" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name]" placeholder="No data here" :required="item.required" disabled editable @clicked="toggleEditField(item.name, item.label, item.type)"/>
 									</template><template v-else-if="item.type == 'number'">
 										<asField background="#F7F7F7" type="number" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name]" placeholder="No data here" :required="item.required" disabled editable @clicked="toggleEditField(item.name, item.label, item.type)"/>
+									</template><template v-else-if="item.type == 'disabled'">
+										<asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name]" placeholder="No data here" :required="item.required" disabled/>
 									</template><template v-else-if="item.type == 'toggle'">
 										<asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name] == true ? 'Yes' : 'No'" placeholder="No data here" :required="item.required" disabled editable @clicked="toggleEditField(item.name, item.label, item.type)"/>
 									</template><template v-else-if="item.type == 'date'">
@@ -363,6 +389,18 @@
 										<asField background="#F7F7F7" type="text" :name="item.name" :label="item.label" :modelValue="viewEntry.content[item.name] + ' EUR'" placeholder="No data here" :required="item.required" disabled :editable="item.name != 'invoice_total'" @clicked="toggleEditField(item.name, item.label, item.type)"/>
 									</template>
 								</template>
+							</template>
+						</div>
+					</div>
+					<div v-if="viewTable.name == 'invoices' && active_workspace.permissions.tables_access.clients < 4" class="sectionBox boxtype2">
+						<div class="sectionBoxHead">
+							<h5>{{ viewEntry.structure[viewTable.name].singular }}'s Client</h5>
+							<asButton bttnType="third" :label="'See client entry'" icon="see-25gray-16.png" @click="seeEntry(viewEntry.content.invoice_project.data.attributes.project_contract.data.attributes.contract_client.data.id, 'clients')"/>
+						</div>
+						<div class="as-separator"></div>
+						<div class="entryFields">
+							<template v-for="(field, index) in [['client_cui', 'Client CUI'], ['client_name', 'Client name'], ['client_trade_register_number', 'Client Trade Register Number'], ['client_address', 'Client Address'], ['client_iban', 'Client IBAN'], ['client_vat_payer', 'Client VAT payer']]">
+								<asField background="#F7F7F7" type="text" :name="'subentryField' + index" :label="field[1]" :modelValue="viewEntry.content.invoice_project.data.attributes.project_contract.data.attributes.contract_client.data.attributes[field[0]]" placeholder="No data here" required disabled/>
 							</template>
 						</div>
 					</div>
@@ -445,7 +483,7 @@
 	<div class="modal-overlay" id="addNewEntry" v-if="newEntry.visible">
 		<div class="modal-container">
 			<div class="modal-head">
-				<h3><span class="tableTitle">{{ newEntry.table }}</span> - Add new entry</h3>
+				<h3><span class="tableTitle">{{ newEntry.table == 'products' ? 'services' : newEntry.table }}</span> - Add new entry</h3>
 				<img src="../assets/close-main-20.png" @click="addNewEntry('close')"/>
 			</div>
 			<div class="as-separator"></div>
@@ -469,7 +507,8 @@
 									<option v-for="item in newEntry.mainRelationOptions" :value="item.id">{{ item.name }}</option>
 								</select>
 						</div>
-						<asField v-else-if="item.name == 'client_cui'" @change="getDataFromCUI()" :label="item.label" :type="item.type" :placeholder="item.label" :name="item.name" :required="item.required"/>
+						<asField v-else-if="item.name == 'client_cui'" @change="getDataFromCUI()" :label="item.label" :type="item.type" :placeholder="item.label" :name="item.name" :required="item.required" :min="0" :max="9999999999"/>
+						<asField v-else-if="item.name == 'item_quantity'" :label="item.label" :type="item.type" :placeholder="item.label" :name="item.name" :required="item.required" :min="-999999" :step="item.type == 'number' ? 0.01 : 1"/>
 						<asField v-else :label="item.label" :type="item.type" :placeholder="item.label" :name="item.name" :required="item.required" :min="item.type == 'number' ? 0.01 : 0" :step="item.type == 'number' ? 0.01 : 1"/>
 					</template>
 				</template>
@@ -604,6 +643,16 @@ export default {
 				}
 			},
 			view: "dashboard",
+			dashboard: {
+				stats: [
+					{ label: 'new entries', description: 'created today', value: 0 },
+					{ label: 'new entries', description: 'created this week', value: 0 },
+					{ label: 'new entries', description: 'created this month', value: 0 },
+					{ label: 'new members', description: 'joined this month', value: 0 },
+				],
+				newestMember: '',
+				tables: [ ['clients', '0'], ['contracts', '0'], ['projects', '0'], ['employees', '0'], ['invoices', '0'], ['products', '0'] ]
+			},
 			viewTable: {
 				name: null,
 				content: [],
@@ -616,7 +665,7 @@ export default {
 						"client_vat_payer": "VAT Payer"
 					},
 					contracts: {
-						"id": "Contract Number",
+						"contract_number": "Contract Number",
 						"contract_date": "Contract Date",
 						"contract_status": "Status",
 						"contract_client[findDeep][client_name]": "Client",
@@ -626,14 +675,14 @@ export default {
 						"project_status": "Status",
 						"project_deadline": "Deadline",
 						"project_value": "Value",
-						"project_contract[findDeep][id]": "Contract Number"
+						"project_contract[findDeep][contract_number]": "Contract Number"
 					},
 					employees: {
 						"employee_name": "Name",
 						"employee_cnp": "CNP"
 					},
 					invoices: {
-						"id": "Invoice number",
+						"invoice_number": "Invoice number",
 						"invoice_issue_date": "Issue Date",
 						"invoice_due_date": "Due Date",
 						"invoice_project[findDeep][project_name]": "Project",
@@ -641,7 +690,7 @@ export default {
 						"invoice_paid": "Paid"
 					},
 					products: {
-						"id": "Product ID",
+						"id": "Service ID",
 						"product_name": "Name",
 						"product_quantity_unit": "Quantity Unit",
 						"product_unit_value": "Unit Value",
@@ -691,10 +740,10 @@ export default {
 						{ type: 'relation', name: 'invoice_project',                    label: 'Project',                       required: true },
 					],
 					products: [
-						{ type: 'text',     name: 'product_name',                       label: 'Product name',                  required: true },
-						{ type: 'text',     name: 'product_description',                label: 'Product description',           required: false },
-						{ type: 'text',     name: 'product_quantity_unit',              label: 'Product measuring unit',        required: true },
-						{ type: 'number',   name: 'product_unit_value',                 label: 'Product unit value (in EUR)',   required: true },
+						{ type: 'text',     name: 'product_name',                       label: 'Service name',                  required: true },
+						{ type: 'text',     name: 'product_description',                label: 'Service description',           required: false },
+						{ type: 'text',     name: 'product_quantity_unit',              label: 'Service measuring unit',        required: true },
+						{ type: 'number',   name: 'product_unit_value',                 label: 'Service unit value (in EUR)',   required: true },
 					],
 					tasks: [
 						{ type: 'relation', name: 'task_employee',                      label: 'Assignee',                      required: true, ifTable: 'projects' },
@@ -703,7 +752,7 @@ export default {
 						{ type: 'date',     name: 'task_deadline',                      label: 'Task deadline',                 required: true },
 					],
 					items: [
-						{ type: 'relation', name: 'item_product',                       label: 'Product',                       required: true },
+						{ type: 'relation', name: 'item_product',                       label: 'Service',                       required: true },
 						{ type: 'number',   name: 'item_quantity',                      label: 'Quantity',                      required: true },
 					]
 				}
@@ -739,7 +788,7 @@ export default {
 								table: 'contract',
 								prefill: 'contract_client',
 								fields: [
-									{ name: 'id', label: 'Contract number', type: 'disabled' },
+									{ name: 'contract_number', label: 'Contract number', type: 'disabled' },
 									{ name: 'contract_date', label: 'Contract date', type: 'date' },
 									{ name: 'contract_status', label: 'Contract status', type: 'dropdown' }
 								]
@@ -750,7 +799,7 @@ export default {
 						singular: 'Contract',
 						singularandlower: 'contract',
 						fields: [
-							{ name: 'id', label: 'Contract number', type: 'disabled', required: true, },
+							{ name: 'contract_number', label: 'Contract number', type: 'disabled', required: true, },
 							{ name: 'contract_date', label: 'Contract date', type: 'date', required: true, },
 							{ name: 'contract_status', label: 'Contract status', type: 'dropdown', required: true, }
 						],
@@ -763,7 +812,7 @@ export default {
 								{ name: 'client_address', label: 'Client address' },
 								{ name: 'client_iban', label: 'Client IBAN' },
 								{ name: 'client_vat_payer', label: 'Client VAT payer', type: 'toggle' }
-							],
+							]
 						},
 						otherRelations: [
 							{
@@ -790,17 +839,17 @@ export default {
 						mainRelation: {
 							table: 'contract',
 							fields: [
-								{ name: 'id', label: 'Contract number' },
+								{ name: 'contract_number', label: 'Contract number' },
 								{ name: 'contract_date', label: 'Contract date' },
 								{ name: 'contract_status', label: 'Contract status' },
-							],
+							]
 						},
 						otherRelations: [
 							{
 								table: 'invoice',
 								prefill: 'invoice_project',
 								fields: [
-									{ name: 'id', label: 'Invoice number', type: 'disabled', },
+									{ name: 'invoice_number', label: 'Invoice number', type: 'disabled', },
 									{ name: 'invoice_issue_date', label: 'Issue date', type: 'date', },
 									{ name: 'invoice_due_date', label: 'Due date', type: 'date', },
 									{ name: 'invoice_total', label: 'Invoice total', type: 'currency', },
@@ -843,7 +892,7 @@ export default {
 						singular: 'Invoice',
 						singularandlower: 'invoice',
 						fields: [
-							{ name: 'id', label: 'Invoice number', type: 'disabled', required: true, },
+							{ name: 'invoice_number', label: 'Invoice number', type: 'disabled', required: true, },
 							{ name: 'invoice_issue_date', label: 'Issue date', type: 'date', required: true, },
 							{ name: 'invoice_due_date', label: 'Due date', type: 'date', required: true, },
 							{ name: 'invoice_total', label: 'Invoice total', type: 'currency', required: true, },
@@ -864,7 +913,7 @@ export default {
 								table: 'item',
 								special: true,
 								fields: [
-									{ name: 'item_product', name2: 'product_name', label: 'Product name', type: 'text', composed: true },
+									{ name: 'item_product', name2: 'product_name', label: 'Service name', type: 'text', composed: true },
 									{ name: 'item_quantity',label: 'Quantity', type: 'number' },
 									{ name: 'item_product', name2: 'product_quantity_unit', label: 'M.U.', type: 'text', composed: true },
 									{ name: 'item_product', name2: 'product_unit_value', label: 'Unit value', type: 'currency', composed: true },
@@ -873,14 +922,14 @@ export default {
 						]
 					},
 					products: {
-						singular: 'Product',
-						singularandlower: 'product',
+						singular: 'Service',
+						singularandlower: 'service',
 						fields: [
-							{ name: 'id', label: 'Product ID', type: 'disabled', required: true },
-							{ name: 'product_name', label: 'Product name', type: 'text', required: true },
-							{ name: 'product_description', label: 'Product description', type: 'text', required: true },
-							{ name: 'product_quantity_unit', label: 'Product quantity unit', type: 'text', required: true },
-							{ name: 'product_unit_value', label: 'Product unit value (in EUR)', type: 'currency', required: true },
+							{ name: 'id', label: 'Service ID', type: 'disabled', required: true },
+							{ name: 'product_name', label: 'Service name', type: 'text', required: true },
+							{ name: 'product_description', label: 'Service description', type: 'text', required: true },
+							{ name: 'product_quantity_unit', label: 'Service quantity unit', type: 'text', required: true },
+							{ name: 'product_unit_value', label: 'Service unit value (in EUR)', type: 'currency', required: true },
 						],
 					}
 				},
@@ -1178,7 +1227,23 @@ export default {
 					} else alert(error.response.data.error.message)
 				})
 			} else if (view == 'dashboard'){
+				await axios.get(this.apiURL + 'workspaces/dashboard/' + this.active_workspace.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then((response) => {
+					console.log("response: ", response)
 
+					// Actualizare date
+					for(let index in response.data.stats) this.dashboard.stats[index].value = response.data.stats[index]
+					this.dashboard.newestMember = response.data.newestMember
+					for(let index in response.data.tables) this.dashboard.tables[index][1] = response.data.tables[index]
+				}).catch((error) => {
+					console.log("error: ", error)
+					console.log("error.response: ", error.response)
+
+					// Daca a expirat token-ul
+					if (error.response.data.error.status == 401 && error.response.data.error.name == "UnauthorizedError"){
+						alert("Your session expired, please login again!")
+						this.logout()
+					} else alert(error.response.data.error.message)
+				})
 			}
 		},
 		async saveWorkspaceSettings(){
@@ -1495,9 +1560,12 @@ export default {
 				console.log("response: ", response)
 
 				if (response.data.data.length){
+					let max = 0
 					for (let index in response.data.data){
 						let item = response.data.data[index]
 						this.viewTable.content[item.id] = {}
+						if (table_name == 'contracts' && item.attributes.contract_number > max) max = item.attributes.contract_number
+						else if (table_name == 'invoices' && item.attributes.invoice_number > max) max = item.attributes.invoice_number
 						for (let value in this.viewTable.structure[this.viewTable.name]){
 							if (value == "id") this.viewTable.content[item.id].id = item.id
 							else {
@@ -1520,6 +1588,8 @@ export default {
 							}
 						}
 					}
+					if (table_name == 'contracts' || table_name == 'invoices') this.viewTable.max = max
+					else this.viewTable.max = null
 				}
 				// this.viewTable.content = this.viewTable.content.filter(function (el) { return el != null })
 				console.log("viewTable: ", this.viewTable)
@@ -1549,11 +1619,11 @@ export default {
 
 				// Declarare populateValue
 				var populateValue = 'populate[discussions][populate][0]=comment_user'
-				if (this.viewTable.name == 'clients') populateValue = "populate[discussions][populate][0]=comment_user&populate[client_contracts]=*"
+				if (this.viewTable.name == 'clients') populateValue = "populate[0]=discussions&populate[1]=discussions.comment_user&populate[2]=client_contracts&populate[3]=client_contact_person"
 				if (this.viewTable.name == 'contracts') populateValue = "populate[discussions][populate][0]=comment_user&populate[contract_client]=*" + "&populate[contract_projects]=*"
 				else if (this.viewTable.name == 'projects') populateValue = "populate[discussions][populate][0]=comment_user&populate[project_invoices]=*" + "&populate[project_contract]=*" + "&populate[project_tasks][populate][0]=task_employee"
 				else if (this.viewTable.name == 'employees') populateValue = "populate[discussions][populate][0]=comment_user&populate[employee_tasks]=*"
-				else if (this.viewTable.name == 'invoices') populateValue = "populate[discussions][populate][0]=comment_user&populate[invoice_project]=*" + "&populate[invoice_items][populate][0]=item_product"
+				else if (this.viewTable.name == 'invoices') populateValue = "populate[0]=discussions&populate[1]=discussions.comment_user&populate[2]=invoice_items&populate[3]=invoice_items.item_product&populate[4]=invoice_project&populate[5]=invoice_project.project_contract&populate[6]=invoice_project.project_contract.contract_client"
 
 				// Preluare date
 				await axios.get(this.apiURL + 'table-' + this.viewTable.name + '/' + entryID + '/?' + populateValue, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
@@ -1562,6 +1632,8 @@ export default {
 					// Preluare date despre entry
 					this.viewEntry.content = response.data.data.attributes
 					this.viewEntry.content.id = response.data.data.id
+
+					// if (this.viewTable.name == )
 				}).catch((error) => {
 					console.log("error: ", error)
 					console.log("error.response: ", error.response)
@@ -1574,8 +1646,14 @@ export default {
 				})
 			}
 		},
-		async addNewEntry(tableName, prefillField, prefillValue){
-			console.log("Method: addNewEntry(" + tableName + ", " + prefillField + ", " + prefillValue + ")")
+		addNewEntryFromDashboard(tableName){
+			console.log("Method: addNewEntryFromDashboard(" + tableName + ")")
+
+			this.changeTableView(tableName)
+			this.addNewEntry(tableName)
+		},
+		async addNewEntry(tableName, prefillField, prefillValue, nextValue){
+			console.log("Method: addNewEntry(" + tableName + ", " + prefillField + ", " + prefillValue + ", " + nextValue + ")")
 
 			if (tableName == "close"){
 				this.newEntry.visible = false
@@ -1595,27 +1673,33 @@ export default {
 					items:      { table: "products",    field: "product_name" },
 				}
 				if (this.viewTable.name == 'employees') relationTable.tasks = { table: "projects", field: "project_name" }
-				if (relationTable[tableName]) await axios.get(this.apiURL + 'table-' + relationTable[tableName].table, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
+
+				if (relationTable[tableName]) await axios.get(this.apiURL + 'table-' + relationTable[tableName].table + '/?populate=*&filters[workspace][id][$eq]=' + this.active_workspace.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
 					console.log("response: ", response)
 
-					for (let index in response.data.data){
-						let item = response.data.data[index]
-						let thename = null
-						if (relationTable[tableName].field == "id") thename = item.id
-						else thename = item.attributes[relationTable[tableName].field]
-						this.newEntry.mainRelationOptions.push({
-							id: item.id,
-							name: thename
-						})
-					}
+					if (response.data.data.length){
+						for (let index in response.data.data){
+							let item = response.data.data[index]
+							let thename = null
+							if (relationTable[tableName].field == "id") thename = item.id
+							else thename = item.attributes[relationTable[tableName].field]
+							this.newEntry.mainRelationOptions.push({
+								id: item.id,
+								name: thename
+							})
+						}
 
-					// Prepopulare
-					if (prefillField){
-						document.querySelector("#addNewEntry [name='" + prefillField + "']").setAttribute("disabled", true)
-						setTimeout(function(){
-							document.querySelector("#addNewEntry [name='" + prefillField + "']").value = prefillValue
-							document.querySelector("#addNewEntry [name='" + prefillField + "']").removeAttribute("disabled")
-						}, 500)
+						// Prepopulare
+						if (prefillField){
+							document.querySelector("#addNewEntry [name='" + prefillField + "']").setAttribute("disabled", true)
+							setTimeout(function(){
+								document.querySelector("#addNewEntry [name='" + prefillField + "']").value = prefillValue
+								document.querySelector("#addNewEntry [name='" + prefillField + "']").removeAttribute("disabled")
+							}, 500)
+						}
+					} else {
+						alert("Before creating a/an " + tableName.slice(0, -1) + " you first need to have at least one " + relationTable[tableName].table.slice(0, -1) + "!")
+						this.addNewEntry("close")
 					}
 				}).catch((error) => {
 					console.log("error: ", error)
@@ -1724,7 +1808,7 @@ export default {
 				case "clients": text = text + "\n\nAll contracts, projects and invoices related to this client will also be deleted!"; break
 				case "contracts": text = text + "\n\nAll projects and invoices related to this contract will also be deleted!"; break
 				case "projects": text = text + "\n\nAll invoices related to this project will also be deleted!"; break
-				case "products": text = text + "\n\nThe product will also disappear from all invoices containing it!"; break
+				case "products": text = text + "\n\nThe service will also disappear from all invoices containing it!"; break
 				case "employees": text = text + "\n\nAll tasks of this employee will also disappear from the projects!"; break
 			}
 			let confirmAction = confirm(text)
@@ -1825,7 +1909,7 @@ export default {
 						Project_contract:	{ table: "contracts", field: "id" },
 						Invoice_project:	{ table: "projects", field: "project_name" }
 					}
-					await axios.get(this.apiURL + 'table-' + relationTable[fieldName].table, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
+					await axios.get(this.apiURL + 'table-' + relationTable[fieldName].table + '/?populate=*&filters[workspace][id][$eq]=' + this.active_workspace.id, { headers: { Authorization: 'Bearer ' + this.user.jwt } } ).then(async (response) => {
 						console.log("response: ", response)
 
 						for (let index in response.data.data){
@@ -2024,6 +2108,87 @@ export default {
 						margin-right: 16px;
 					}
 				}
+			}
+
+			display: flex;
+			flex-direction: column;
+			gap: 24px;
+
+			.row{
+				display: flex;
+				gap: 24px;
+
+				.box{
+					width: 1px;
+					flex-grow: 1;
+					background: var(--pure-white);
+					padding: 24px;
+					border-radius: 3px;
+					border: 1px solid var(--75-gray);
+					display: flex;
+					flex-direction: column;
+					gap: 4px;
+
+					h5{
+						span{
+							background: var(--brand-gradient);
+							-webkit-background-clip: text;
+							-webkit-text-fill-color: transparent;
+							background-clip: text;
+							text-fill-color: transparent;
+							font-weight: 600;
+						}
+					}
+
+					p{
+						font-weight: 600;
+						color: var(--50-gray);
+					}
+				}
+
+				&:last-child{
+					display: grid;
+    				grid-template-columns: repeat(3, minmax(0, 1fr));
+
+					.box{
+						width: 100%;
+						gap: 24px;
+						transition: all 0.3s ease;
+						cursor: pointer;
+
+						&:hover{
+							box-shadow: 0 0 25px #5668F680;
+							transform: scale(1.025);
+							.top{
+								h5{ color: var(--main); }
+								p{
+									color: var(--accent-glass);
+									background: var(--accent);
+								}
+							}
+						}
+						
+						.top{
+							display: flex;
+							align-items: center;
+							gap: 8px;
+
+							> * { transition: all 0.3s ease; }
+
+							img{ width: 16px; height: auto; }
+							h5{ flex-grow: 1; text-transform: capitalize; }
+							p{ background: var(--accent-glass); color: var(--accent); padding: 4px 8px; border-radius: 3px;}
+						}
+					}
+				}
+			}
+
+			.greetingsBox{
+				border-radius: 3px;
+				background: var(--brand-gradient);
+				padding: 24px;
+				text-align: center;
+				color: var(--pure-white);
 			}
 		}
 
